@@ -2,7 +2,7 @@ import socket
 import threading
 import time
 from chatroom import ChatRoom
-
+import uuid
 
 class Server():
     BUFFER_SIZE = 4096
@@ -17,6 +17,8 @@ class Server():
         # ソケットを特殊なアドレス0.0.0.0とポート9001に紐付け
         self.socket.bind((server_address, server_port))
         self.active_clients = {}
+        # ユーザー名とトークンを関連付ける
+        self.user_tokens = {}
 
     def start(self):
         # 受信を待ち受ける処理とタイムアウトのチェック処理を並列実行する
@@ -94,6 +96,13 @@ class Server():
         finally:
             print('closing socket')
             self.socket.close()
+
+
+def generate_user_token(self, username):
+    user_token = str(uuid.uuid4())
+    self.user_tokens[user_token] = username
+
+    return user_token
 
 
 def main():
