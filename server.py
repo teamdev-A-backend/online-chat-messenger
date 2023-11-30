@@ -46,6 +46,20 @@ class Server():
                     len(data), client_address))
                 print(data)
 
+                # データ解析
+                header = data[:32]
+                body = data[32:]
+
+                # header
+                room_name_size = int.from_bytes(data[:1], byteorder='big')
+                operation = int.from_bytes(data[1:2], byteorder='big')
+                state = int.from_bytes(data[2:3], byteorder='big')
+                operation_payload_size = int.from_bytes(data[3:32], byteorder='big')
+
+                # body
+                room_name = body[:room_name_size]
+                operation_payload = body[room_name_size:room_name_size + operation_payload_size]
+
                 # データ準備
                 username_len = int.from_bytes(data[:1], byteorder='big')
                 username = self.decoder(data[1:1 + username_len])
