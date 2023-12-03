@@ -1,7 +1,7 @@
 import socket
 import threading
 import time
-from chatroom import ChatRoom
+#from chatroom import ChatRoom
 import uuid
 
 class Server():
@@ -50,31 +50,52 @@ class Server():
                 header = data[:32]
                 body = data[32:]
 
-                # header
-                room_name_size = int.from_bytes(data[:1], byteorder='big')
-                operation = int.from_bytes(data[1:2], byteorder='big')
-                state = int.from_bytes(data[2:3], byteorder='big')
-                operation_payload_size = int.from_bytes(data[3:32], byteorder='big')
+                # header解析
+                room_name_size =  int.from_bytes(header[:1], byteorder='big')
+                print('room_size: received {} bytes data: {}'.format(
+                    len(header[:1]), room_name_size))
+                operation = int.from_bytes(header[1:2],byteorder='big')
+                print('operation: received {} bytes data: {}'.format(
+                    len(header[1:2]), operation))
+                state = int.from_bytes(header[2:3], byteorder='big')
+                print('state: received {} bytes data: {}'.format(
+                    len(header[2:3]), state))
 
-                # body
-                room_name = body[:room_name_size]
-                operation_payload = body[room_name_size:room_name_size + operation_payload_size]
+                operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
+                print('payload_size: received {} bytes data: {}'.format(
+                    len(header[3:32]), operation_payload_size))
+
+                # body解析
+                room_name = self.decoder(body[:room_name_size])
+                print('room_name: received {} bytes data: {}'.format(
+                    len(body[:room_name_size]), room_name))
+
+                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size])
+
+                print('user_name: received {} bytes data: {}'.format(
+                    len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+
+
+                if operation == 1:
+                    self.initialize_chat_room(operation_payload, client_address)
+
+                print(self.user_tokens)
 
                 # データ準備
-                username_len = int.from_bytes(data[:1], byteorder='big')
-                username = self.decoder(data[1:1 + username_len])
-                message_body = f"{username}: {self.decoder(data[1 + username_len:])}"
+                # username_len = int.from_bytes(data[:1], byteorder='big')
+                # username = self.decoder(data[1:1 + username_len])
+                # message_body = f"{username}: {self.decoder(data[1 + username_len:])}"
 
                 # データ受信後アクティブなクライアント情報をメモリ上保存
-                self.active_clients[client_address] = {
-                    'username': username, 'last_time': time.time()}
+                # self.active_clients[client_address] = {
+                #     'username': username, 'last_time': time.time()}
 
-                if data:
-                    # マルチキャストで送信
-                    self.multicast(self.encoder(message_body))
-                    # sent = self.socket.sendto(data, client_address)
-                    # print('sent {} bytes back to {}'.format(
-                    #     sent, client_address))
+                # if data:
+                #     # マルチキャストで送信
+                #     self.multicast(self.encoder(message_body))
+                #     # sent = self.socket.sendto(data, client_address)
+                #     # print('sent {} bytes back to {}'.format(
+                #     #     sent, client_address))
         finally:
             print('closing socket')
             self.socket.close()
@@ -112,12 +133,21 @@ class Server():
             self.socket.close()
 
 
-def generate_user_token(self, username):
-    user_token = str(uuid.uuid4())
-    self.user_tokens[user_token] = username
 
-    return user_token
 
+    def initialize_chat_room(self, username, client_address):
+        # 即レスポンスを返す処理。
+        print('Start initialize room.')
+        operation_payload = f"{200}OK"
+        self.socket.sendto(self.encoder(operation_payload), client_address)
+        host_token = generate_user_token()
+        self.user_tokens[host_token] = username
+        # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
+        self.socket.sendto(self.encoder(host_token), client_address)
+
+
+def generate_user_token():
+    return str(uuid.uuid4())
 
 def main():
     server = Server()
