@@ -52,7 +52,7 @@ class Server():
 
                 # header解析
                 room_name_size =  int.from_bytes(header[:1], byteorder='big')
-                print('room_size: received {} bytes data: {}'.format(
+                print('\nroom_size: received {} bytes data: {}'.format(
                     len(header[:1]), room_name_size))
                 operation = int.from_bytes(header[1:2],byteorder='big')
                 print('operation: received {} bytes data: {}'.format(
@@ -136,7 +136,6 @@ class Server():
     def initialize_chat_room(self,room_name, username, client_address):
         # 即レスポンスを返す処理。
         print('Start initialize room.')
-        room_name_tobyte = self.encoder(room_name)
 
         operation_payload = 200
         operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
@@ -147,8 +146,14 @@ class Server():
         self.socket.sendto(header+body, client_address)
         host_token = generate_user_token()
         self.user_tokens[host_token] = username
+
         # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
-        self.socket.sendto(self.encoder(host_token), client_address)
+        token_tobyte = self.encoder(host_token)
+        room_name_tobyte = self.encoder(room_name)
+        token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
+        body = room_name_tobyte + token_tobyte
+
+        self.socket.sendto(token_response_header+body, client_address)
 
 
     def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):

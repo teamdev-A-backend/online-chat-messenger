@@ -87,7 +87,7 @@ class Client():
 
         # header解析
         room_name_size =  int.from_bytes(header[:1], byteorder='big')
-        print('room_size: received {} bytes data: {}'.format(
+        print('\nroom_size: received {} bytes data: {}'.format(
             len(header[:1]), room_name_size))
         operation = int.from_bytes(header[1:2],byteorder='big')
         print('operation: received {} bytes data: {}'.format(
@@ -136,6 +136,33 @@ class Client():
                 # 応答を受信
                 data, _ = self.socket.recvfrom(Client.BUFFER_SIZE)
                 print('\n received {!r}'.format(data))
+                # データ解析
+                header = data[:32]
+                body = data[32:]
+
+                # header解析
+                room_name_size =  int.from_bytes(header[:1], byteorder='big')
+                print('\nroom_size: received {} bytes data: {}'.format(
+                    len(header[:1]), room_name_size))
+                operation = int.from_bytes(header[1:2],byteorder='big')
+                print('operation: received {} bytes data: {}'.format(
+                    len(header[1:2]), operation))
+                state = int.from_bytes(header[2:3], byteorder='big')
+                print('state: received {} bytes data: {}'.format(
+                    len(header[2:3]), state))
+
+                operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
+                print('payload_size: received {} bytes data: {}'.format(
+                    len(header[3:32]), operation_payload_size))
+
+                # body解析
+                room_name = self.decoder(body[:room_name_size])
+                print('room_name: received {} bytes data: {}'.format(
+                    len(body[:room_name_size]), room_name))
+
+                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size])
+                print('user_name: received {} bytes data: {}'.format(
+                    len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
         finally:
             print('closing socket')
