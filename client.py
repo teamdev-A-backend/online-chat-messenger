@@ -58,11 +58,25 @@ class Client():
         return
 
     def send_username(self):
-        user_name = self.encoder(self.username)
+        #user_name = self.encoder(self.username)
 
+        #送信の際のheaderの作成
+        user_name_to_byte = self.encoder(self.username)
+        user_name_byte_size = len(user_name_to_byte)
+
+        header = self.custom_tcp_header(user_name_byte_size,1,1,user_name_byte_size)
+
+        body = self.encoder(self.username) + self.encoder(self.username)
+
+        # user name
         sent_user_name = self.socket.sendto(
-            user_name, (self.server_address, self.server_port))
+            header+body, (self.server_address, self.server_port))
         print('Send {} bytes'.format(sent_user_name))
+
+        # sent_user_name = self.socket.sendto(
+        #     user_name, (self.server_address, self.server_port))
+        # print('Send {} bytes'.format(sent_user_name))
+
 
         # ユーザー名受信
         print('waiting to receive username')
@@ -99,6 +113,16 @@ class Client():
         finally:
             print('closing socket')
             self.socket.close()
+
+    def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
+        room_name_size = room_name_size.to_bytes(1, byteorder='big')
+        operation = operation.to_bytes(1, byteorder='big')
+        state = state.to_bytes(1, byteorder='big')
+        operation_payload_size = operation_payload_size.to_bytes(29, byteorder='big')
+
+        return room_name_size + operation + state + operation_payload_size
+
+
 
 
 def main():
