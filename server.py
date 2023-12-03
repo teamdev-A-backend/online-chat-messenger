@@ -71,13 +71,11 @@ class Server():
                     len(body[:room_name_size]), room_name))
 
                 operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size])
-
                 print('user_name: received {} bytes data: {}'.format(
                     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
-
                 if operation == 1:
-                    self.initialize_chat_room(operation_payload, client_address)
+                    self.initialize_chat_room(room_name, operation_payload, client_address)
 
                 print(self.user_tokens)
 
@@ -135,15 +133,31 @@ class Server():
 
 
 
-    def initialize_chat_room(self, username, client_address):
+    def initialize_chat_room(self,room_name, username, client_address):
         # 即レスポンスを返す処理。
         print('Start initialize room.')
-        operation_payload = f"{200}OK"
-        self.socket.sendto(self.encoder(operation_payload), client_address)
+        room_name_tobyte = self.encoder(room_name)
+
+        operation_payload = 200
+        operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
+
+        header = self.custom_tcp_header(0,1,1,len(operation_payload_tobyte))
+        body = operation_payload_tobyte
+
+        self.socket.sendto(header+body, client_address)
         host_token = generate_user_token()
         self.user_tokens[host_token] = username
         # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
         self.socket.sendto(self.encoder(host_token), client_address)
+
+
+    def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
+        room_name_size = room_name_size.to_bytes(1, byteorder='big')
+        operation = operation.to_bytes(1, byteorder='big')
+        state = state.to_bytes(1, byteorder='big')
+        operation_payload_size = operation_payload_size.to_bytes(29, byteorder='big')
+
+        return room_name_size + operation + state + operation_payload_size
 
 
 def generate_user_token():
