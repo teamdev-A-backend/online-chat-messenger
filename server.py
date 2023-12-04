@@ -161,8 +161,11 @@ class Server():
         operation_payload = 200
         operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
 
-        header = self.custom_tcp_header(0,1,1,len(operation_payload_tobyte))
-        body = operation_payload_tobyte
+        # headerの作成
+        header = self.custom_tcp_header(len(room_name),1,1,len(operation_payload_tobyte))
+        # bodyの作成
+        body = self.encoder(room_name, 1) + self.encoder(username, 1)
+        
 
         self.socket.sendto(header+body, client_address)
         host_token = generate_user_token()
@@ -174,6 +177,7 @@ class Server():
         token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
         body = room_name_tobyte + token_tobyte
 
+        #メッセージの送信
         self.socket.sendto(token_response_header+body, client_address)
 
 
@@ -196,3 +200,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
