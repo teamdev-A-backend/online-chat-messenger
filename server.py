@@ -62,8 +62,8 @@ class udp_Server():
                 state = int.from_bytes(header[2:3], byteorder='big')
                 print('state: received {} bytes data: {}'.format(
                     len(header[2:3]), state))
-                
-                
+
+
 
                 operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
                 print('payload_size: received {} bytes data: {}'.format(
@@ -80,6 +80,9 @@ class udp_Server():
 
                 if operation == 1:
                     self.initialize_chat_room(room_name, operation_payload, client_address)
+                elif operation == 2:
+                    self.join_chat_room(room_name, operation_payload, client_address)
+
 
                 print(self.user_tokens)
 
@@ -175,7 +178,7 @@ class udp_Server():
         #header = self.custom_tcp_header(len(room_name),1,1,len(operation_payload_tobyte))
         # bodyの作成
         #body = self.encoder(room_name, 1) + self.encoder(username, 1)
-        
+
 
         #self.socket.sendto(header+body, client_address)
         #host_token = generate_user_token()
@@ -218,7 +221,7 @@ class tcp_Server:
 
         print('TCP Server started. It is on {}, port {}'.format(self.address, self.port))
 
-        
+
     # def encoder(self, data: str) -> bytes:
     #     return data.encode(encoding='utf-8')
 
@@ -250,8 +253,8 @@ class tcp_Server:
         thread_chat = threading.Thread(target=self.handle_chat_connection, daemon=True)
         thread_chat.start()
         thread_chat.join()
-        return    
-    
+        return
+
     def handle_chat_connection(self):
         # Handle the client connection
         try:
@@ -266,7 +269,7 @@ class tcp_Server:
             print('closing socket')
             self.socket.close()
 
-    
+
 
     def process_message(self, data, client_address):
         # Process the received message
@@ -336,11 +339,33 @@ class tcp_Server:
         # Send the message
         self.socket.sendto(token_response_header + body, client_address)
 
+
+
+
+
     def handle_token_response(self, room_name, token, client_address):
         # 新しいユーザーがチャットルームに参加したときに呼び出される関数
         print('Handle token response.')
 
         # Process the token and perform necessary actions
+
+    # def join_chat_room(self, room_name, username, client_address):
+    #     print('Start join room.')
+    #     operation_payload = 200
+    #     operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
+
+    #     header = self.custom_tcp_header(0,1,1,len(operation_payload_tobyte))
+    #     body = operation_payload_tobyte
+    #     self.socket.sendto(header+body, client_address)
+
+    #     visitor_token = generate_user_token()
+    #     token_tobyte = self.encoder(visitor_token, 1)
+    #     room_name_tobyte = self.encoder(room_name, 1)
+    #     token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
+    #     token_response_body = room_name_tobyte + token_tobyte
+
+    #     self.socket.sendto(token_response_header+token_response_body, client_address)
+
 
     def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
         # Create the custom TCP header
@@ -367,9 +392,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
