@@ -85,18 +85,16 @@ class Client():
         user_name_to_byte = self.encoder(self.username, 1)
         user_name_byte_size = len(user_name_to_byte)
 
+        #headerの生成
         header = self.custom_tcp_header(user_name_byte_size,1,1,user_name_byte_size)
 
+        #bodyの生成
         body = self.encoder(self.username, 1) + self.encoder(self.username, 1)
 
-        # user name
+        #メッセージの送信
         sent_user_name = self.socket.sendto(
             header+body, (self.server_address, self.server_port))
         print('Send {} bytes'.format(sent_user_name))
-
-        # sent_user_name = self.socket.sendto(
-        #     user_name, (self.server_address, self.server_port))
-        # print('Send {} bytes'.format(sent_user_name))
 
 
         # ユーザー名受信
@@ -207,3 +205,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
