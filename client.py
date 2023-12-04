@@ -1,3 +1,4 @@
+import json
 import socket
 import threading
 
@@ -39,20 +40,40 @@ class Client():
         thread_send_message.join()
         thread_receive_message.join()
 
-    def encoder(self, data: str) -> bytes:
-        return data.encode(encoding='utf-8')
+    # def encoder(self, data: str) -> bytes:
+    #     return data.encode(encoding='utf-8')
 
-    def decoder(self, data: bytes) -> str:
-        return data.decode(encoding='utf-8')
+    def encoder(self, data, intsize: int = 1):
+        if type(data) == str:
+            return data.encode(encoding='utf-8') # to bytes
+        elif type(data) == int:
+            return data.to_bytes(intsize, byteorder='big') # to bytes
+        elif type(data) == dict:
+            return json.dumps(data) # to str
+        else:
+            print('Invalid data was specified.')
+
+    # def decoder(self, data: bytes) -> str:
+    #     return data.decode(encoding='utf-8')
+
+    def decoder(self, data: bytes, result_type: str = 'str'):
+        if result_type == 'str':
+            return data.decode(encoding='utf-8')
+        elif result_type == 'int':
+            return int.from_bytes(data, byteorder='big')
+        elif result_type == 'dict':
+            return json.loads(data)
+        else:
+            print('Invalid data was specified.')
 
     def set_username(self):
         while True:
             username = input("Type in the user name: ")
-            if len(self.encoder(username)) > Client.NAME_SIZE:
+            if len(self.encoder(username, 1)) > Client.NAME_SIZE:
                 print(
                     f'Your name must be equal to or less than {Client.NAME_SIZE} bytes')
                 continue
-            self.namesize = len(self.encoder(username))
+            self.namesize = len(self.encoder(username, 1))
             self.username = username
             break
         return
@@ -61,12 +82,12 @@ class Client():
         #user_name = self.encoder(self.username)
 
         #送信の際のheaderの作成
-        user_name_to_byte = self.encoder(self.username)
+        user_name_to_byte = self.encoder(self.username, 1)
         user_name_byte_size = len(user_name_to_byte)
 
         header = self.custom_tcp_header(user_name_byte_size,1,1,user_name_byte_size)
 
-        body = self.encoder(self.username) + self.encoder(self.username)
+        body = self.encoder(self.username, 1) + self.encoder(self.username, 1)
 
         # user name
         sent_user_name = self.socket.sendto(
@@ -97,7 +118,7 @@ class Client():
             len(header[2:3]), state))
 
         # body解析
-        room_name = self.decoder(body[:room_name_size])
+        room_name = self.decoder(body[:room_name_size], 'str')
         print('room_name: received {} bytes data: {}'.format(
             len(body[:room_name_size]), room_name))
 
@@ -118,8 +139,8 @@ class Client():
                 # 送信データの準備
                 # to_bytes()でint→16進数のbyte列に変換
                 message = self.namesize.to_bytes(length=1, byteorder='big')
-                message += self.encoder(self.username)
-                message += self.encoder(message_body)
+                message += self.encoder(self.username, 1)
+                message += self.encoder(message_body, 1)
                 print('sending {!r}'.format(message))
 
                 # サーバへのデータ送信
@@ -156,11 +177,11 @@ class Client():
                     len(header[3:32]), operation_payload_size))
 
                 # body解析
-                room_name = self.decoder(body[:room_name_size])
+                room_name = self.decoder(body[:room_name_size], 'str')
                 print('room_name: received {} bytes data: {}'.format(
                     len(body[:room_name_size]), room_name))
 
-                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size])
+                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size], 'str')
                 print('user_name: received {} bytes data: {}'.format(
                     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
