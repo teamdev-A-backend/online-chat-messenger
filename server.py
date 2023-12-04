@@ -1,3 +1,4 @@
+import json
 import socket
 import threading
 import time
@@ -66,11 +67,11 @@ class Server():
                     len(header[3:32]), operation_payload_size))
 
                 # body解析
-                room_name = self.decoder(body[:room_name_size])
+                room_name = self.decoder(body[:room_name_size], 'str')
                 print('room_name: received {} bytes data: {}'.format(
                     len(body[:room_name_size]), room_name))
 
-                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size])
+                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size], 'str')
                 print('user_name: received {} bytes data: {}'.format(
                     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
@@ -104,11 +105,31 @@ class Server():
             print('sent {} bytes to {}'.format(sent, address))
         return
 
-    def encoder(self, data: str) -> bytes:
-        return data.encode(encoding='utf-8')
+    # def encoder(self, data: str) -> bytes:
+    #     return data.encode(encoding='utf-8')
 
-    def decoder(self, data: bytes) -> str:
-        return data.decode(encoding='utf-8')
+    def encoder(self, data, intsize: int = 1):
+        if type(data) == str:
+            return data.encode(encoding='utf-8') # to bytes
+        elif type(data) == int:
+            return data.to_bytes(intsize, byteorder='big') # to bytes
+        elif type(data) == dict:
+            return json.dumps(data) # to str
+        else:
+            print('Invalid data was specified.')
+
+    # def decoder(self, data: bytes) -> str:
+    #     return data.decode(encoding='utf-8')
+
+    def decoder(self, data: bytes, result_type: str = 'str'):
+        if result_type == 'str':
+            return data.decode(encoding='utf-8')
+        elif result_type == 'int':
+            return int.from_bytes(data, byteorder='big')
+        elif result_type == 'dict':
+            return json.loads(data)
+        else:
+            print('Invalid data was specified.')
 
     def check_timeout(self):
         try:
@@ -148,8 +169,8 @@ class Server():
         self.user_tokens[host_token] = username
 
         # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
-        token_tobyte = self.encoder(host_token)
-        room_name_tobyte = self.encoder(room_name)
+        token_tobyte = self.encoder(host_token, 1)
+        room_name_tobyte = self.encoder(room_name, 1)
         token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
         body = room_name_tobyte + token_tobyte
 
