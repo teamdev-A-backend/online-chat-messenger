@@ -21,6 +21,7 @@ class udp_Server():
         self.active_clients = {}
         # ユーザー名とトークンを関連付ける
         self.user_tokens = {}
+        self.chat_rooms = {}
 
     def start(self):
         # 受信を待ち受ける処理とタイムアウトのチェック処理を並列実行する
@@ -47,6 +48,7 @@ class udp_Server():
                 print('received {} bytes from {}'.format(
                     len(data), client_address))
                 print(data)
+
 
                 # データ解析
                 header = data[:32]
@@ -330,6 +332,14 @@ class tcp_Server:
         host_token = generate_user_token()
         self.user_tokens[host_token] = username
 
+        # self.chat_rooms[room_name] = {'host' : set(), 'members': set()}
+        # self.chat_rooms[room_name]['host'].add((host_token, username))
+        # self.chat_rooms[room_name]['members'].add((host_token, client_address))
+
+        # print(self.chat_rooms)
+
+
+
         # Return the response with the host token
         token_tobyte = self.encoder(host_token, 1)
         room_name_tobyte = self.encoder(room_name, 1)
@@ -358,13 +368,26 @@ class tcp_Server:
     #     body = operation_payload_tobyte
     #     self.socket.sendto(header+body, client_address)
 
-    #     visitor_token = generate_user_token()
-    #     token_tobyte = self.encoder(visitor_token, 1)
-    #     room_name_tobyte = self.encoder(room_name, 1)
-    #     token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
-    #     token_response_body = room_name_tobyte + token_tobyte
+        # roomが見つからなかったとき、404レスポンス
+        # try:
+        #     visitor_token = generate_user_token()
+        #     token_tobyte = self.encoder(visitor_token, 1)
+        #     room_name_tobyte = self.encoder(room_name, 1)
+        #     self.chat_rooms[room_name]['members'].add((visitor_token, client_address))
 
-    #     self.socket.sendto(token_response_header+token_response_body, client_address)
+        # except KeyError:
+        #     print('ルームが存在しない')
+        #     operation_payload = 403
+        #     operation_payload_tobyte =self.encoder(operation_payload, 2)
+        #     header = self.custom_tcp_header(0,2,2,len(operation_payload_tobyte))
+        #     body = operation_payload_tobyte
+        #     self.socket.sendto(header+body, client_address)
+
+        # else:
+        #     token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
+        #     token_response_body = room_name_tobyte + token_tobyte
+        #     self.socket.sendto(token_response_header+token_response_body, client_address)
+        #     print(self.chat_rooms)
 
 
     def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
