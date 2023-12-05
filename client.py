@@ -22,11 +22,14 @@ class Client():
         print(
             f'client address:{self.client_address}, client port:{self.client_port}')
 
+        #チャットルーム新規作成か参加か選ぶ
+        operation_type = self.select_action_mode()
+
         # ユーザー名セット
         self.set_username()
 
         # ユーザー名送信
-        self.send_username()
+        self.send_username(operation_type)
 
         # ユーザーからの入力を送信する処理とサーバーから受信する処理を並列実行する
         thread_send_message = threading.Thread(
@@ -78,15 +81,14 @@ class Client():
             break
         return
 
-    def send_username(self):
+    def send_username(self, operation):
         #user_name = self.encoder(self.username)
 
         #送信の際のheaderの作成
         user_name_to_byte = self.encoder(self.username, 1)
         user_name_byte_size = len(user_name_to_byte)
 
-        #headerの生成
-        header = self.custom_tcp_header(user_name_byte_size,1,1,user_name_byte_size)
+        header = self.custom_tcp_header(user_name_byte_size,operation,1,user_name_byte_size)
 
         #bodyの生成
         body = self.encoder(self.username, 1) + self.encoder(self.username, 1)
@@ -195,11 +197,15 @@ class Client():
 
         return room_name_size + operation + state + operation_payload_size
 
-# tcpクラスはここから
-# class tcp_client():
-
-
-
+    def select_action_mode(self):
+        while True:
+            type = input('チャットルームを新規作成する場合は「1」、チャットルームに参加する場合は「2」を入力してください')
+            if type == "1" :
+                return 1
+            elif type == "2" :
+                return 2
+            else:
+               print('入力を受け取ることができませんでした。')
 
 def main():
     client = Client()
@@ -208,5 +214,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
