@@ -370,23 +370,25 @@ class tcp_Server:
 
         # roomが見つからなかったとき、404レスポンス
         # try:
-        #     visitor_token = generate_user_token()
-        #     token_tobyte = self.encoder(visitor_token, 1)
+        #     member_token = generate_user_token()
         #     room_name_tobyte = self.encoder(room_name, 1)
-        #     self.chat_rooms[room_name]['members'].add((visitor_token, client_address))
+        #     self.chat_rooms[room_name]['members'].add((member_token, client_address))
 
         # except KeyError:
         #     print('ルームが存在しない')
-        #     operation_payload = 403
-        #     operation_payload_tobyte =self.encoder(operation_payload, 2)
+        #     operation_payload = self.custom_tcp_body_by_json(404,None)
+        #     operation_payload_tobyte =self.encoder(self.encoder(operation_payload))
         #     header = self.custom_tcp_header(0,2,2,len(operation_payload_tobyte))
         #     body = operation_payload_tobyte
         #     self.socket.sendto(header+body, client_address)
 
         # else:
-        #     token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
-        #     token_response_body = room_name_tobyte + token_tobyte
-        #     self.socket.sendto(token_response_header+token_response_body, client_address)
+        #     body_json = self.custom_tcp_body_by_json(200,member_token)
+        #     body_json_encoded = self.encoder(self.encoder(body_json))
+
+        #     member_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(body_json_encoded))
+        #     member_response_body = room_name_tobyte + body_json_encoded
+        #     self.socket.sendto(member_response_header+member_response_body, client_address)
         #     print(self.chat_rooms)
 
 
@@ -399,6 +401,12 @@ class tcp_Server:
 
         return room_name_size + operation + state + operation_payload_size
 
+    # def custom_tcp_body_by_json(self, status_code, token):
+    #     body_json = {
+    #         "status_code" : status_code,
+    #         "user_token": token
+    #     }
+    #     return body_json
 
 
 def generate_user_token():
