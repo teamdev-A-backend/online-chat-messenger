@@ -338,13 +338,14 @@ class tcp_Server:
 
         # print(self.chat_rooms)
 
+        # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
+        #token_tobyte = self.encoder(host_token, 1)
+        token_json = self.custom_tcp_body_by_json(200,host_token)
+        token_json_encoded = self.encoder(self.encoder(token_json))
 
-
-        # Return the response with the host token
-        token_tobyte = self.encoder(host_token, 1)
         room_name_tobyte = self.encoder(room_name, 1)
-        token_response_header = self.custom_tcp_header(len(room_name_tobyte), 1, 2, len(token_tobyte))
-        body = room_name_tobyte + token_tobyte
+        token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_json_encoded))
+        body = room_name_tobyte + token_json_encoded
 
         # Send the message
         self.socket.sendto(token_response_header + body, client_address)

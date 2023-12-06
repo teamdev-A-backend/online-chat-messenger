@@ -14,6 +14,7 @@ class Client():
         self.client_address = self.socket.getsockname()[0]
         self.client_port = self.socket.getsockname()[1]
         self.username = ''
+        self.user_token = None
         self.namesize = 0
 
         self.socket.bind((self.client_address, self.client_port))
@@ -99,8 +100,8 @@ class Client():
         print('Send {} bytes'.format(sent_user_name))
 
 
-        # ユーザー名受信
-        print('waiting to receive username')
+        # データ受信
+        print('waiting to receive data from server')
         data, _ = self.socket.recvfrom(Client.BUFFER_SIZE)
         print('\n received username {!r}'.format(data))
         header = data[:32]
@@ -181,9 +182,14 @@ class Client():
                 print('room_name: received {} bytes data: {}'.format(
                     len(body[:room_name_size]), room_name))
 
-                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size], 'str')
+                #operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size], 'str')
+                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size],'dict')
                 print('user_name: received {} bytes data: {}'.format(
                     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+
+                if state == 2 and operation_payload["status_code"] == 200:
+                    self.user_token = operation_payload["user_token"]
+                print(self.user_token)
 
         finally:
             print('closing socket')
@@ -199,7 +205,7 @@ class Client():
 
     def select_action_mode(self):
         while True:
-            type = input('チャットルームを新規作成する場合は「1」、チャットルームに参加する場合は「2」を入力してください')
+            type = input('チャットルームを新規作成する場合は「1」、チャットルームに参加する場合は「2」を入力してください: ')
             if type == "1" :
                 return 1
             elif type == "2" :
