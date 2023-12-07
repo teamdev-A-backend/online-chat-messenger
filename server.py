@@ -5,7 +5,8 @@ import time
 #from chatroom import ChatRoom
 import uuid
 
-class Server():
+# ここからUDPサーバーの実装
+class udp_Server():
     BUFFER_SIZE = 4096
     TIME_OUT = 5
 
@@ -15,7 +16,7 @@ class Server():
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_address = server_address
         self.server_port = server_port
-        # ソケットを特殊なアドレス0.0.0.0とポート9001に紐付け
+        # ソケットを特殊なアドレス0.0.0.0とポート8080に紐付け
         self.socket.bind((server_address, server_port))
         self.active_clients = {}
         # ユーザー名とトークンを関連付ける
@@ -41,7 +42,7 @@ class Server():
             # データの受信を永久に待ち続ける
             while True:
                 print('\nwaiting to receive message')
-                data, client_address = self.socket.recvfrom(Server.BUFFER_SIZE)
+                data, client_address = self.socket.recvfrom(udp_Server.BUFFER_SIZE)
                 # 同一PC内の場合はループバックアドレス(127.0.0.1), clientのportが返却
                 print('received {} bytes from {}'.format(
                     len(data), client_address))
@@ -61,6 +62,8 @@ class Server():
                 state = int.from_bytes(header[2:3], byteorder='big')
                 print('state: received {} bytes data: {}'.format(
                     len(header[2:3]), state))
+                
+                
 
                 operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
                 print('payload_size: received {} bytes data: {}'.format(
@@ -154,34 +157,193 @@ class Server():
 
 
 
-    def initialize_chat_room(self,room_name, username, client_address):
+    #def initialize_chat_room(self,room_name, username, client_address):
         # 即レスポンスを返す処理。
+        #print('Start initialize room.')
+
+        #operation_payload = 200
+        #operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
+
+        # ルーム名のバイト数が最大バイト数を超えている場合はエラーを返す
+        #if len(room_name) > 2**8:
+            #raise ValueError('The length of room name is too long.')
+        # ペイロードのバイト数が最大バイト数を超えている場合はエラーを返す
+        #if len(operation_payload_tobyte) > 2**29:
+            #raise ValueError('The length of operation payload is too long.')
+
+        # headerの作成
+        #header = self.custom_tcp_header(len(room_name),1,1,len(operation_payload_tobyte))
+        # bodyの作成
+        #body = self.encoder(room_name, 1) + self.encoder(username, 1)
+        
+
+        #self.socket.sendto(header+body, client_address)
+        #host_token = generate_user_token()
+        #self.user_tokens[host_token] = username
+
+        # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
+        #token_tobyte = self.encoder(host_token, 1)
+        #room_name_tobyte = self.encoder(room_name, 1)
+        #token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
+        #body = room_name_tobyte + token_tobyte
+
+        #メッセージの送信
+        #self.socket.sendto(token_response_header+body, client_address)
+
+
+    #def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
+        #room_name_size = room_name_size.to_bytes(1, byteorder='big')
+        #operation = operation.to_bytes(1, byteorder='big')
+        #state = state.to_bytes(1, byteorder='big')
+        #operation_payload_size = operation_payload_size.to_bytes(29, byteorder='big')
+
+        #return room_name_size + operation + state + operation_payload_size
+
+
+
+
+# ここからTCPサーバーの実装
+class tcp_Server:
+    buffer_size = 4096
+    time_out = 5
+
+    def __init__(self):
+        # Initialize the TCP server
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.address = '0.0.0.0'
+        self.port = 12345
+        self.socket.bind((self.address, self.port))
+        self.socket.listen(1)
+        self.user_tokens = {}
+
+        print('TCP Server started. It is on {}, port {}'.format(self.address, self.port))
+
+        
+    # def encoder(self, data: str) -> bytes:
+    #     return data.encode(encoding='utf-8')
+
+    def encoder(self, data, intsize: int = 1):
+        if type(data) == str:
+            return data.encode(encoding='utf-8') # to bytes
+        elif type(data) == int:
+            return data.to_bytes(intsize, byteorder='big') # to bytes
+        elif type(data) == dict:
+            return json.dumps(data) # to str
+        else:
+            print('Invalid data was specified.')
+
+    # def decoder(self, data: bytes) -> str:
+    #     return data.decode(encoding='utf-8')
+
+    def decoder(self, data: bytes, result_type: str = 'str'):
+        if result_type == 'str':
+            return data.decode(encoding='utf-8')
+        elif result_type == 'int':
+            return int.from_bytes(data, byteorder='big')
+        elif result_type == 'dict':
+            return json.loads(data)
+        else:
+            print('Invalid data was specified.')
+
+    def start(self):
+        # Start the TCP server
+        thread_chat = threading.Thread(target=self.handle_chat_connection, daemon=True)
+        thread_chat.start()
+        thread_chat.join()
+        return    
+    
+    def handle_chat_connection(self):
+        # Handle the client connection
+        try:
+            while True:
+                print('チャットルームの作成をするか、参加するかを選択してください。1か2を選択してください')
+                print("1: チャットルームの作成")
+                print("2: チャットルームに参加")
+                data, client_address = self.socket.accept()
+                print('connection from', client_address)
+                self.process_message(data, client_address)
+        finally:
+            print('closing socket')
+            self.socket.close()
+
+    
+
+    def process_message(self, data, client_address):
+        # Process the received message
+
+        print('received {} bytes from {}'.format(len(data), client_address))
+        # データをheaderとbodyに分割
+        header = data[:32]
+        body = data[32:]
+
+        # header解析
+        room_name_size = int.from_bytes(header[0:1], byteorder='big')
+        operation = int.from_bytes(header[1:2], byteorder='big')
+        state = int.from_bytes(header[2:3], byteorder='big')
+        operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
+
+        # body解析
+        room_name = body[:room_name_size]
+        operation_payload = body[room_name_size:room_name_size+operation_payload_size]
+
+        # bodyのデコード
+        room_name_decode = self.decoder(room_name, 'str')
+        operation_payload_decode = self.decoder(operation_payload, 'str')
+
+        # bodyのデコード結果のバイト数をチェック
+        if len(room_name_decode) > 2**8:
+            raise ValueError('The length of room name is too long.')
+        if len(operation_payload_decode) > 2**29:
+            raise ValueError('The length of operation payload is too long.')
+
+        # create room
+        if operation == 1:
+            self.initialize_chat_room(room_name, state, operation_payload, client_address)
+
+        # join room
+        elif operation == 2:
+            self.handle_token_response(room_name, operation_payload, client_address)
+
+    def initialize_chat_room(self, room_name, state ,username, client_address):
+        # 新しいチャットルームを作成したときに呼び出される関数
         print('Start initialize room.')
 
         operation_payload = 200
         operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
 
-        # headerの作成
-        header = self.custom_tcp_header(len(room_name),1,1,len(operation_payload_tobyte))
-        # bodyの作成
-        body = self.encoder(room_name, 1) + self.encoder(username, 1)
-        
+        # Return an error if the length of room name exceeds the maximum byte size
+        if len(room_name) > 2**8:
+            raise ValueError('The length of room name is too long.')
+        # Return an error if the length of operation payload exceeds the maximum byte size
+        if len(operation_payload_tobyte) > 2**29:
+            raise ValueError('The length of operation payload is too long.')
 
-        self.socket.sendto(header+body, client_address)
+        # Create the header
+        header = self.custom_tcp_header(len(room_name), 1, 1, len(operation_payload_tobyte))
+        # Create the body
+        body = self.encoder(room_name, 1) + self.encoder(username, 1)
+
+        self.socket.sendto(header + body, client_address)
         host_token = generate_user_token()
         self.user_tokens[host_token] = username
 
-        # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
+        # Return the response with the host token
         token_tobyte = self.encoder(host_token, 1)
         room_name_tobyte = self.encoder(room_name, 1)
-        token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
+        token_response_header = self.custom_tcp_header(len(room_name_tobyte), 1, 2, len(token_tobyte))
         body = room_name_tobyte + token_tobyte
 
-        #メッセージの送信
-        self.socket.sendto(token_response_header+body, client_address)
+        # Send the message
+        self.socket.sendto(token_response_header + body, client_address)
 
+    def handle_token_response(self, room_name, token, client_address):
+        # 新しいユーザーがチャットルームに参加したときに呼び出される関数
+        print('Handle token response.')
+
+        # Process the token and perform necessary actions
 
     def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
+        # Create the custom TCP header
         room_name_size = room_name_size.to_bytes(1, byteorder='big')
         operation = operation.to_bytes(1, byteorder='big')
         state = state.to_bytes(1, byteorder='big')
@@ -190,14 +352,24 @@ class Server():
         return room_name_size + operation + state + operation_payload_size
 
 
+
 def generate_user_token():
     return str(uuid.uuid4())
 
 def main():
-    server = Server()
-    server.start()
+    # udp_server = udp_Server()
+    # udp_server.start()
+
+
+    tcp_server = tcp_Server()
+    tcp_server.start()
 
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
 
