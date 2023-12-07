@@ -29,19 +29,20 @@ class Client():
         # ユーザー名セット
         self.set_username()
 
+        chatroom_name = self.input_room_name()
         # ユーザー名送信
-        self.send_username(operation_type)
+        self.send_username(operation_type, chatroom_name)
 
         # ユーザーからの入力を送信する処理とサーバーから受信する処理を並列実行する
-        thread_send_message = threading.Thread(
-            target=self.send_message, daemon=True)
+        # thread_send_message = threading.Thread(
+        #     target=self.send_message, daemon=True)
         thread_receive_message = threading.Thread(
             target=self.receive_message, daemon=True)
 
-        thread_send_message.start()
+        #thread_send_message.start()
         thread_receive_message.start()
 
-        thread_send_message.join()
+        #thread_send_message.join()
         thread_receive_message.join()
 
     # def encoder(self, data: str) -> bytes:
@@ -82,17 +83,19 @@ class Client():
             break
         return
 
-    def send_username(self, operation):
+    def send_username(self, operation, chatroom_name):
         #user_name = self.encoder(self.username)
 
         #送信の際のheaderの作成
         user_name_to_byte = self.encoder(self.username, 1)
         user_name_byte_size = len(user_name_to_byte)
 
-        header = self.custom_tcp_header(user_name_byte_size,operation,1,user_name_byte_size)
+        chatroom_name_to_byte = self.encoder(chatroom_name, 1)
+        chatroom_name_byte_size = len(chatroom_name_to_byte)
 
-        #bodyの生成
-        body = self.encoder(self.username, 1) + self.encoder(self.username, 1)
+        header = self.custom_tcp_header(chatroom_name_byte_size,operation,1,user_name_byte_size)
+
+        body = chatroom_name_to_byte + self.encoder(self.username, 1)
 
         #メッセージの送信
         sent_user_name = self.socket.sendto(
@@ -189,11 +192,17 @@ class Client():
 
                 if state == 2 and operation_payload["status_code"] == 200:
                     self.user_token = operation_payload["user_token"]
-                print(self.user_token)
+                    self.tcpr_end_udp_start()
+                    print(self.user_token)
+                    break
+                elif state == 2 and operation_payload["status_code"] == 404:
+                    print("チャットルームが存在しません、最初からやり直します。")
+                    self.start()
+                    break
 
         finally:
             print('closing socket')
-            self.socket.close()
+            #self.socket.close()
 
     def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
         room_name_size = room_name_size.to_bytes(1, byteorder='big')
@@ -212,6 +221,18 @@ class Client():
                 return 2
             else:
                print('入力を受け取ることができませんでした。')
+
+    def input_room_name(self):
+        while True:
+            room_name = input('チャットルームの名前を入力してください。: ')
+            if room_name:
+                return room_name
+            else:
+                print('ルーム名が確認できません。')
+
+    def tcpr_end_udp_start(self):
+        print('udpに移行します。')
+        self.socket.close()
 
 def main():
     client = Client()
