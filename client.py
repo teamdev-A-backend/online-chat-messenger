@@ -7,7 +7,7 @@ class Client():
     NAME_SIZE = 255
     BUFFER_SIZE = 4096
 
-    def __init__(self, server_address='0.0.0.0', server_port=9001):
+    def __init__(self, server_address='0.0.0.0', server_port=8080):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_address = server_address
         self.server_port = server_port
@@ -194,6 +194,9 @@ class Client():
         operation_payload_size = operation_payload_size.to_bytes(29, byteorder='big')
 
         return room_name_size + operation + state + operation_payload_size
+
+# tcpクラスはここから
+# class tcp_client():
 
 
 
