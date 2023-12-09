@@ -209,7 +209,7 @@ class tcp_Server:
     buffer_size = 4096
     time_out = 5
 
-    def __init__(self):
+    def __init__(self, chatroom_list):
         # Initialize the TCP server
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.address = '0.0.0.0'
@@ -218,6 +218,7 @@ class tcp_Server:
         self.socket.listen(1)
         self.user_tokens = {}
         self.chat_rooms = {}
+        self.chat_room_list = chatroom_list
 
         print('TCP Server started. It is on {}, port {}'.format(self.address, self.port))
 
@@ -419,6 +420,20 @@ class tcp_Server:
         }
         return body_json
 
+class chat_room:
+    def __init__(self):
+        self.chat_room_list = {}
+
+    def create_chat_room(self, room_name, username, host_token, client_address):
+        if room_name not in self.chat_room_list:
+            self.chat_room_list[room_name] = {'host' : set(), 'members': set()}
+            self.chat_room_list[room_name]['host'].add((host_token, username))
+            self.chat_room_list[room_name]['members'].add((host_token, client_address))
+
+    def add_member_to_chatroom(self, room_name, member_token, client_address):
+        if room_name not in self.chat_room_list:
+            self.chat_room_list[room_name]['members'].add((member_token, client_address))
+
 
 def generate_user_token():
     return str(uuid.uuid4())
@@ -426,9 +441,9 @@ def generate_user_token():
 def main():
     # udp_server = udp_Server()
     # udp_server.start()
+    chat_room_list = chat_room()
 
-
-    tcp_server = tcp_Server()
+    tcp_server = tcp_Server(chat_room_list)
     tcp_server.start()
 
 
