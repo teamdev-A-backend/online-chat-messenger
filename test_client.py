@@ -32,7 +32,7 @@ class TCPClient:
 
         
         #thread_send_message.start()
-        t#hread_receive_message.start()
+        #thread_receive_message.start()
 
         #thread_send_message.join()
         #thread_receive_message.join()

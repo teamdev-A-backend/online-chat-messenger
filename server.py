@@ -80,10 +80,10 @@ class udp_Server():
                 print('user_name: received {} bytes data: {}'.format(
                     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
-                if operation == 1:
-                    self.initialize_chat_room(room_name, operation_payload, client_address)
+                #if operation == 1:
+                    #self.initialize_chat_room(room_name, operation_payload, client_address)
 
-                print(self.user_tokens)
+                #print(self.user_tokens)
 
                 # データ準備
                 # username_len = int.from_bytes(data[:1], byteorder='big')
@@ -300,11 +300,11 @@ class tcp_Server:
 
         # create room
         if operation == 1:
-            self.initialize_chat_room(room_name, state, operation_payload, client_address)
+            self.initialize_chat_room(room_name_decode, state, operation_payload_decode, client_address)
 
         # join room
         elif operation == 2:
-            self.handle_token_response(room_name, state, operation_payload, client_address)
+            self.handle_token_response(room_name_decode, state, operation_payload_decode, client_address)
 
     def initialize_chat_room(self, room_name, state ,username, client_address):
         # 新しいチャットルームを作成したときに呼び出される関数
@@ -376,7 +376,10 @@ class tcp_Server:
         # Create the body
         body = room_name + self.encoder(username, 1)
 
-        self.socket.sendto(header + body, client_address)
+        try:
+            self.socket.sendto(header + body, client_address)
+        except BrokenPipeError:
+             print("Connection to client was lost.")
 
         #roomが見つからなかったとき、404レスポンス
         try:
