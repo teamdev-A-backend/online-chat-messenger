@@ -114,6 +114,7 @@ class udp_Server():
                         sent = self.socket.sendto(header + body, client_address)
 
                     else:
+                        self.chat_rooms[room_name]['timestamp'][token] = time.time()
                         self.multicast_send(message, room_name)
 
                 # データ準備
