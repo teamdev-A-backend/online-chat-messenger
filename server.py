@@ -443,7 +443,7 @@ class chat_room:
             raise ValueError(f"Room name: '{room_name}' is already in use.")
 
     def add_member_to_chatroom(self, room_name, member_token, client_address):
-        if room_name not in self.chat_room_list:
+        if room_name in self.chat_room_list:
             self.chat_room_list[room_name]['members'].add((member_token, client_address))
         else:
             raise KeyError
