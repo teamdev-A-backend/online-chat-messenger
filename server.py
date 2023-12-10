@@ -88,18 +88,21 @@ class udp_Server():
                 print('token: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + token_size]), token))
 
                 message_byte = body[room_name_size + token_size:]
-                message = self.decoder(message_byte, 'str')
-                print('message: received {} bytes data: {}'.format(len(body[room_name_size + token_size:]), message))
-
-                if message == '[remove_chatroom]':
-                    target_room = self.chat_rooms[room_name]
-                    user_info = (token, client_address)
-                    if target_room['host'] == user_info:
-                        self.chat_rooms.remove_chatroom(self, room_name, token, client_address)
-                    else:
-                        self.chat_rooms.remove_member_from_chatroom(self, room_name, token, client_address)
+                if(len(message_byte) > 4094):
+                    raise ValueError('The length of room name is too long.')
                 else:
-                    self.multicast_send(message, room_name)
+                    message = self.decoder(message_byte, 'str')
+                    print('message: received {} bytes data: {}'.format(len(body[room_name_size + token_size:]), message))
+
+                    if message == '[remove_chatroom]':
+                        target_room = self.chat_rooms[room_name]
+                        user_info = (token, client_address)
+                        if target_room['host'] == user_info:
+                            self.chat_rooms.remove_chatroom(self, room_name, token, client_address)
+                        else:
+                            self.chat_rooms.remove_member_from_chatroom(self, room_name, token, client_address)
+                    else:
+                        self.multicast_send(message, room_name)
 
                 # データ準備
                 # username_len = int.from_bytes(data[:1], byteorder='big')
