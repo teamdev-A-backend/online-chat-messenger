@@ -2,26 +2,23 @@ import json
 import socket
 import threading
 
-
-class Client():
+class TCPClient:
     NAME_SIZE = 255
     BUFFER_SIZE = 4096
 
-    def __init__(self, server_address='0.0.0.0', server_port=8080):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def __init__(self, server_address='0.0.0.0', server_port=12345):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_address = server_address
         self.server_port = server_port
-        self.client_address = self.socket.getsockname()[0]
-        self.client_port = self.socket.getsockname()[1]
         self.username = ''
-        self.user_token = None
         self.namesize = 0
 
-        self.socket.bind((self.client_address, self.client_port))
-
+        #サーバーに接続
+        self.socket.connect((self.server_address, self.server_port))
+    
     def start(self):
         print(
-            f'client address:{self.client_address}, client port:{self.client_port}')
+            f'server address:{self.server_address}, server port:{self.server_port}')
 
         #チャットルーム新規作成か参加か選ぶ
         operation_type = self.select_action_mode()
@@ -33,21 +30,13 @@ class Client():
         # ユーザー名送信
         self.send_username(operation_type, chatroom_name)
 
-        # ユーザーからの入力を送信する処理とサーバーから受信する処理を並列実行する
-        # thread_send_message = threading.Thread(
-        #     target=self.send_message, daemon=True)
-        thread_receive_message = threading.Thread(
-            target=self.receive_message, daemon=True)
-
+        
         #thread_send_message.start()
-        thread_receive_message.start()
+        t#hread_receive_message.start()
 
         #thread_send_message.join()
-        thread_receive_message.join()
-
-    # def encoder(self, data: str) -> bytes:
-    #     return data.encode(encoding='utf-8')
-
+        #thread_receive_message.join()
+    
     def encoder(self, data, intsize: int = 1):
         if type(data) == str:
             return data.encode(encoding='utf-8') # to bytes
@@ -74,9 +63,9 @@ class Client():
     def set_username(self):
         while True:
             username = input("Type in the user name: ")
-            if len(self.encoder(username, 1)) > Client.NAME_SIZE:
+            if len(self.encoder(username, 1)) > TCPClient.NAME_SIZE:
                 print(
-                    f'Your name must be equal to or less than {Client.NAME_SIZE} bytes')
+                    f'Your name must be equal to or less than {TCPClient.NAME_SIZE} bytes')
                 continue
             self.namesize = len(self.encoder(username, 1))
             self.username = username
@@ -105,7 +94,7 @@ class Client():
 
         # データ受信
         print('waiting to receive data from server')
-        data, _ = self.socket.recvfrom(Client.BUFFER_SIZE)
+        data, _ = self.socket.recvfrom(TCPClient.BUFFER_SIZE)
         print('\n received username {!r}'.format(data))
         header = data[:32]
         body = data[32:]
@@ -134,6 +123,89 @@ class Client():
         print('user_name: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
         return
+    
+    
+
+    def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
+        room_name_size = room_name_size.to_bytes(1, byteorder='big')
+        operation = operation.to_bytes(1, byteorder='big')
+        state = state.to_bytes(1, byteorder='big')
+        operation_payload_size = operation_payload_size.to_bytes(29, byteorder='big')
+
+        return room_name_size + operation + state + operation_payload_size
+
+
+    def select_action_mode(self):
+        while True:
+            type = input('チャットルームを新規作成する場合は「1」、チャットルームに参加する場合は「2」を入力してください: ')
+            if type == "1" :
+                return 1
+            elif type == "2" :
+                return 2
+            else:
+               print('入力を受け取ることができませんでした。')
+
+    def input_room_name(self):
+        while True:
+            room_name = input('チャットルームの名前を入力してください。: ')
+            if room_name:
+                return room_name
+            else:
+                print('ルーム名が確認できません。')
+
+class UDPClient:
+    BUFFER_SIZE = 4094
+    def __init__(self, server_address='0.0.0.0', server_port=9001):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_address = server_address
+        self.server_port = server_port
+
+        self.client_address = self.socket.getsockname()[0]
+        self.client_port = self.socket.getsockname()[1]
+        self.username = ''
+        self.user_token = None
+        self.namesize = 0
+
+        #サーバーに接続
+        self.socket.connect((self.server_address, self.server_port))
+    def start(self):
+        print(
+            f'server address:{self.server_address}, server port:{self.server_port}')
+        
+
+        #メッセージの送信
+        thread_send_message = threading.Thread(target=self.send_message)
+        thread_receive_message = threading.Thread(target=self.receive_message)
+
+        thread_send_message.start()
+        thread_receive_message.start()
+
+        thread_send_message.join()
+        thread_receive_message.join()
+    
+    def encoder(self, data, intsize: int = 1):
+        if type(data) == str:
+            return data.encode(encoding='utf-8') # to bytes
+        elif type(data) == int:
+            return data.to_bytes(intsize, byteorder='big') # to bytes
+        elif type(data) == dict:
+            return json.dumps(data) # to str
+        else:
+            print('Invalid data was specified.')
+
+    # def decoder(self, data: bytes) -> str:
+    #     return data.decode(encoding='utf-8')
+
+    def decoder(self, data: bytes, result_type: str = 'str'):
+        if result_type == 'str':
+            return data.decode(encoding='utf-8')
+        elif result_type == 'int':
+            return int.from_bytes(data, byteorder='big')
+        elif result_type == 'dict':
+            return json.loads(data)
+        else:
+            print('Invalid data was specified.')
+
 
     def send_message(self):
         try:
@@ -154,12 +226,12 @@ class Client():
         finally:
             print('closing socket')
             self.socket.close()
-
+    
     def receive_message(self):
         try:
             while True:
                 # 応答を受信
-                data, _ = self.socket.recvfrom(Client.BUFFER_SIZE)
+                data, _ = self.socket.recvfrom(UDPClient.BUFFER_SIZE)
                 print('\n received {!r}'.format(data))
                 # データ解析
                 header = data[:32]
@@ -192,7 +264,6 @@ class Client():
 
                 if state == 2 and operation_payload["status_code"] == 200:
                     self.user_token = operation_payload["user_token"]
-                    self.tcpr_end_udp_start()
                     print(self.user_token)
                     break
                 elif state == 2 and operation_payload["status_code"] == 404:
@@ -204,42 +275,20 @@ class Client():
             print('closing socket')
             #self.socket.close()
 
-    def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
-        room_name_size = room_name_size.to_bytes(1, byteorder='big')
-        operation = operation.to_bytes(1, byteorder='big')
-        state = state.to_bytes(1, byteorder='big')
-        operation_payload_size = operation_payload_size.to_bytes(29, byteorder='big')
 
-        return room_name_size + operation + state + operation_payload_size
 
-    def select_action_mode(self):
-        while True:
-            type = input('チャットルームを新規作成する場合は「1」、チャットルームに参加する場合は「2」を入力してください: ')
-            if type == "1" :
-                return 1
-            elif type == "2" :
-                return 2
-            else:
-               print('入力を受け取ることができませんでした。')
 
-    def input_room_name(self):
-        while True:
-            room_name = input('チャットルームの名前を入力してください。: ')
-            if room_name:
-                return room_name
-            else:
-                print('ルーム名が確認できません。')
 
-    def tcpr_end_udp_start(self):
-        print('udpに移行します。')
-        self.socket.close()
 
 def main():
-    client = Client()
-    client.start()
+    # チャットルーム新規作成か参加か選ぶ
+    tcp_client = TCPClient()
+    tcp_client.start()
+
+    # メッセージの送受信
+    udp_client = UDPClient()
+    udp_client.start()
 
 
 if __name__ == '__main__':
     main()
-
-

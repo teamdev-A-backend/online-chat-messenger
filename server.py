@@ -38,7 +38,7 @@ class udp_Server():
         return
 
     def receive_message(self):
-        print('starting up on port {}'.format(self.server_port))
+        print("UDP Server started. It is on {}, port {}".format(self.server_address, self.server_port))
         try:
             # データの受信を永久に待ち続ける
             while True:
@@ -259,11 +259,10 @@ class tcp_Server:
         # Handle the client connection
         try:
             while True:
-                print('チャットルームの作成をするか、参加するかを選択してください。1か2を選択してください')
-                print("1: チャットルームの作成")
-                print("2: チャットルームに参加")
+                print('\nwaiting for a tcpclient connection')
                 data, client_address = self.socket.accept()
                 print('connection from', client_address)
+                data = data.recv(tcp_Server.buffer_size)
                 self.process_message(data, client_address)
         finally:
             print('closing socket')
@@ -424,13 +423,13 @@ def generate_user_token():
     return str(uuid.uuid4())
 
 def main():
-    # udp_server = udp_Server()
-    # udp_server.start()
-
-
+    # チャットルーム作成/接続のためのサーバーを立ち上げる
     tcp_server = tcp_Server()
     tcp_server.start()
 
+    # チャットルーム内でのメッセージ送受信のためのサーバーを立ち上げる
+    udp_server = udp_Server()
+    udp_server.start()
 
 if __name__ == '__main__':
     main()
