@@ -605,17 +605,18 @@ def generate_user_token():
 
 def main():
 
+    chat_room_list = chat_room()
+
     # チャットルーム作成/接続のためのサーバーを立ち上げる
-    tcp_server = tcp_Server()
+    tcp_server = tcp_Server(chat_room_list)
     # udp_server = udp_Server()
     # udp_server.start()
-    chat_room_list = chat_room()
     udp_server = udp_Server(chat_room_list)
+
+    tcp_server.start()
     udp_server.start()
 
     #tcp_server = tcp_Server(chat_room_list)
-
-    tcp_server.start()
 
     # チャットルーム内でのメッセージ送受信のためのサーバーを立ち上げる
     udp_server = udp_Server()
