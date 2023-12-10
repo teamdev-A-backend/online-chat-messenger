@@ -101,6 +101,18 @@ class udp_Server():
                             self.chat_rooms.remove_chatroom(self, room_name, token, client_address)
                         else:
                             self.chat_rooms.remove_member_from_chatroom(self, room_name, token, client_address)
+
+                        room_name_byte = self.encoder(room_name)
+                        header_room_name_encode = self.encoder(room_name_byte)
+                        token_encode = self.encoder(token)
+                        header_token_encode = self.encoder(token_encode, 1)
+
+                        header = header_room_name_encode + header_token_encode
+                        message = '接続が解除されました。'
+                        message_encode = self.encoder(message)
+                        body = room_name_byte + token_encode + message_encode
+                        sent = self.socket.sendto(header + body, client_address)
+
                     else:
                         self.multicast_send(message, room_name)
 
@@ -128,7 +140,7 @@ class udp_Server():
         header_room_name_encode = self.encoder(room_name_byte)
         active_clients = self.chat_rooms[room_name]['members']
 
-        for token,  address in self.active_clients:
+        for token,  address in active_clients:
             token_encode = self.encoder(token)
             header_token_encode = self.encoder(token_encode, 1)
             header = header_room_name_encode + header_token_encode
@@ -139,6 +151,29 @@ class udp_Server():
             sent = self.socket.sendto(header + body, address)
             print('sent {} bytes to {}'.format(sent, address))
         return
+
+    def check_inactive_clients(self):
+        while True:
+            current_time = time.time()
+
+            for room in self.chat_rooms:
+                for token, client_address in room['members']:
+                    timestamp = room['timestamp'][token]
+
+                    if(current_time - timestamp > 600):
+                        self.chat_rooms.remove_member_from_chatroom(room, token, client_address)
+                        room_name_byte = self.encoder(room)
+                        header_room_name_encode = self.encoder(room_name_byte)
+                        token_encode = self.encoder(token)
+                        header_token_encode = self.encoder(token_encode, 1)
+
+                        header = header_room_name_encode + header_token_encode
+                        message = '接続が解除されました。'
+                        message_encode = self.encoder(message)
+                        body = room_name_byte + token_encode + message_encode
+
+                        sent = self.socket.sendto(header + body, client_address)
+            time.sleep(600)
 
     # def multicast(self, body: bytes) -> None:
     #     for address in self.active_clients:
@@ -510,15 +545,17 @@ class chat_room:
 
     def create_chat_room(self, room_name, username, host_token, client_address):
         if room_name not in self.chat_room_list:
-            self.chat_room_list[room_name] = {'host' : set(), 'members': set()}
+            self.chat_room_list[room_name] = {'host' : set(), 'members': set(), 'timestamp': set()}
             self.chat_room_list[room_name]['host'].add((host_token, username))
             self.chat_room_list[room_name]['members'].add((host_token, client_address))
+            self.chat_room_list[room_name]['timestamp'].add((host_token, time.time()))
         else:
             raise ValueError(f"Room name: '{room_name}' is already in use.")
 
     def add_member_to_chatroom(self, room_name, member_token, client_address):
         if room_name in self.chat_room_list:
             self.chat_room_list[room_name]['members'].add((member_token, client_address))
+            self.chat_room_list[room_name]['timestamp'].add((member_token, time.time()))
         else:
             raise KeyError
 
@@ -527,8 +564,10 @@ class chat_room:
             room_info = self.chat_room_list[room_name]
             room_members = room_info['members']
             client_info = (member_token, client_address)
+            client_timestamp = room_info['timestamp']
             if client_info in room_members:
                 room_members.discard(client_info)
+                room_members.discard(member_token, client_timestamp)
             else:
                 raise ValueError(f"Room name: '{room_name}' is valid.")
         else:
