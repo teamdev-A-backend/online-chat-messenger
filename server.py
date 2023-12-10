@@ -21,6 +21,8 @@ class udp_Server():
         self.active_clients = {}
         # ユーザー名とトークンを関連付ける
         self.user_tokens = {}
+        self.chat_rooms = {} # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
+        self.room_name = '' # ToDo:tcp_Serverで作成したchat_room_nameを何らかの方法で共有する
 
 
     def start(self):
@@ -32,9 +34,14 @@ class udp_Server():
             target=self.receive_message, daemon=True)
         thread_receive_message.start()
 
+        thread_check_room_validity = threading.Thread(
+            target=self.check_chatroom_validity, args=(self.chat_rooms, self.room_name), daemon=True)
+        thread_check_room_validity.start()
+
         # join()でデーモンスレッド終了を待つ:https://bty.sakura.ne.jp/wp/archives/69
         # thread_check_timeout.join()
         thread_receive_message.join()
+        thread_check_room_validity.join()
         return
 
     def receive_message(self):
@@ -152,6 +159,28 @@ class udp_Server():
                             del self.active_clients[client]
                         else:
                             pass
+        finally:
+            print('closing socket')
+            self.socket.close()
+    
+    def is_valid_chatroom(self, chat_rooms, room_name_decode):
+        # chatroomの有効/無効の判断をhostの存在有無で行う
+        try:
+            host_info = chat_rooms[room_name_decode]['host']
+        except KeyError:
+            print('The chatroom is invalid.')
+        # hostが存在する場合はTrueを返す
+        return bool(host_info)
+
+    def check_chatroom_validity(self, chat_rooms, room_name_decode):
+        try:
+            while True:
+                if self.is_valid_chatroom(chat_rooms, room_name_decode):
+                    # chatroomが有効な場合何もしない
+                    pass
+                else:
+                    print('Invalid chatroom. closing socket...')
+                    self.socket.close()
         finally:
             print('closing socket')
             self.socket.close()
@@ -305,6 +334,11 @@ class tcp_Server:
 
         # join room
         elif operation == 2:
+            # ToDo：クライアントが保持しているトークンを含むUDPパケットを解析して取得する
+            client_token = 'decoded udp packet'
+            # chat_roomに参加するための許可トークンとIPアドレスを照合する
+            self.authorize_to_join_chatroom(self, client_token, client_address, room_name_decode)
+
             self.handle_token_response(room_name, state, operation_payload, client_address)
 
     def initialize_chat_room(self, room_name, state ,username, client_address):
@@ -418,6 +452,20 @@ class tcp_Server:
             "user_token": token
         }
         return body_json
+
+    def authorize_to_join_chatroom(self, token, room_name, state, operation_payload, client_address):
+        # tokenとaddressがServerで所持しているtokenに紐づくIPアドレスと一致するか確認する
+        room_name_decode = self.decoder(room_name, 'str')
+        room_members = self.chat_rooms[room_name_decode]['members']
+        client_info = (token, client_address)
+        if client_info in room_members:
+            print('You can join the chatroom.')
+        else:
+            # 一致しなかった場合チャットルーム作成に戻る
+            print('You cannot join the chatroom.')
+            self.initialize_chat_room(room_name, state, operation_payload, client_address)
+
+        return
 
 
 def generate_user_token():
