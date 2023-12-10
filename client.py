@@ -87,14 +87,14 @@ class TCPClient:
         body = chatroom_name_to_byte + self.encoder(self.username, 1)
 
         #メッセージの送信
-        sent_user_name = self.socket.sendto(
-            header+body, (self.server_address, self.server_port))
+        sent_user_name = self.socket.sendall(
+            header+body)
         print('Send {} bytes'.format(sent_user_name))
 
 
         # データ受信
         print('waiting to receive data from server')
-        data, _ = self.socket.recvfrom(TCPClient.BUFFER_SIZE)
+        data = self.socket.recv(TCPClient.BUFFER_SIZE)
         print('\n received username {!r}'.format(data))
         header = data[:32]
         body = data[32:]

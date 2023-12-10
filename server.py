@@ -398,7 +398,7 @@ class tcp_Server:
 
         # create room
         if operation == 1:
-            self.initialize_chat_room(room_name_decode, state, operation_payload_decode, client_address)
+            self.initialize_chat_room(room_name, state, operation_payload_decode, client_address)
 
         # join room
         elif operation == 2:            
@@ -425,11 +425,11 @@ class tcp_Server:
             raise ValueError('The length of operation payload is too long.')
 
         # Create the header
-        header = self.custom_tcp_header(len(room_name), 1, 1, len(operation_payload_tobyte))
+        header = self.custom_tcp_header(0, 1, 1, len(operation_payload_tobyte))
         # Create the body
-        body = self.encoder(room_name, 1) + self.encoder(username, 1)
+        body = operation_payload_tobyte
 
-        self.socket.sendto(header + body, client_address)
+        self.socket.sendall(header + body)
         host_token = generate_user_token()
         self.user_tokens[host_token] = username
 
