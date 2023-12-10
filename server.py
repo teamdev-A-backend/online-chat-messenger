@@ -21,6 +21,8 @@ class udp_Server():
         self.active_clients = {}
         # ユーザー名とトークンを関連付ける
         self.user_tokens = {}
+        self.chat_rooms = {} # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
+        self.room_name = '' # ToDo:tcp_Serverで作成したchat_room_nameを何らかの方法で共有する
 
 
     def start(self):
@@ -32,9 +34,14 @@ class udp_Server():
             target=self.receive_message, daemon=True)
         thread_receive_message.start()
 
+        thread_check_room_validity = threading.Thread(
+            target=self.check_chatroom_validity, args=(self.chat_rooms, self.room_name), daemon=True)
+        thread_check_room_validity.start()
+
         # join()でデーモンスレッド終了を待つ:https://bty.sakura.ne.jp/wp/archives/69
         # thread_check_timeout.join()
         thread_receive_message.join()
+        thread_check_room_validity.join()
         return
 
     def receive_message(self):
@@ -155,6 +162,28 @@ class udp_Server():
         finally:
             print('closing socket')
             self.socket.close()
+    
+    def is_valid_chatroom(self, chat_rooms, room_name_decode):
+        # chatroomの有効/無効の判断をhostの存在有無で行う
+        try:
+            host_info = chat_rooms[room_name_decode]['host']
+        except KeyError:
+            print('The chatroom is invalid.')
+        # hostが存在する場合はTrueを返す
+        return bool(host_info)
+
+    def check_chatroom_validity(self, chat_rooms, room_name_decode):
+        try:
+            while True:
+                if self.is_valid_chatroom(chat_rooms, room_name_decode):
+                    # chatroomが有効な場合何もしない
+                    pass
+                else:
+                    print('Invalid chatroom. closing socket...')
+                    self.socket.close()
+        finally:
+            print('closing socket')
+            self.socket.close()
 
 
 
@@ -209,7 +238,7 @@ class tcp_Server:
     buffer_size = 4096
     time_out = 5
 
-    def __init__(self):
+    def __init__(self, chatroom_list):
         # Initialize the TCP server
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.address = '0.0.0.0'
@@ -217,7 +246,7 @@ class tcp_Server:
         self.socket.bind((self.address, self.port))
         self.socket.listen(1)
         self.user_tokens = {}
-        self.chat_rooms = {}
+        self.chat_room_list = chatroom_list
 
         print('TCP Server started. It is on {}, port {}'.format(self.address, self.port))
 
@@ -303,8 +332,14 @@ class tcp_Server:
             self.initialize_chat_room(room_name_decode, state, operation_payload_decode, client_address)
 
         # join room
-        elif operation == 2:
+        elif operation == 2:            
+            # ToDo：クライアントが保持しているトークンを含むUDPパケットを解析して取得する
+            client_token = 'decoded udp packet'
+            # chat_roomに参加するための許可トークンとIPアドレスを照合する
+            self.authorize_to_join_chatroom(self, client_token, client_address, room_name_decode)
             self.handle_token_response(room_name_decode, state, operation_payload_decode, client_address)
+            
+            # self.handle_token_response(room_name, state, operation_payload, client_address)
 
     def initialize_chat_room(self, room_name, state ,username, client_address):
         # 新しいチャットルームを作成したときに呼び出される関数
@@ -332,27 +367,38 @@ class tcp_Server:
         room_name_decode = self.decoder(room_name, 'str')
 
         # それぞれのroomに紐づく(token,address)のリストへの追加処理
-        self.chat_rooms[room_name_decode] = {'host' : set(), 'members': set()}
-        self.chat_rooms[room_name_decode]['host'].add((host_token, username))
-        self.chat_rooms[room_name_decode]['members'].add((host_token, client_address))
+        # self.chat_rooms[room_name_decode] = {'host' : set(), 'members': set()}
+        # self.chat_rooms[room_name_decode]['host'].add((host_token, username))
+        # self.chat_rooms[room_name_decode]['members'].add((host_token, client_address))
 
-        print(self.chat_rooms)
+        try:
+            self.chat_room_list.create_chat_room(room_name_decode, username, host_token, client_address)
 
-        # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
-        #token_tobyte = self.encoder(host_token, 1)
-        #room_name_tobyte = self.encoder(room_name, 1)
+        except ValueError:
+            operation_payload = self.custom_tcp_body_by_json(400,None)
+            operation_payload_tobyte = self.encoder(self.encoder(operation_payload))
+            header = self.custom_tcp_header(0,1,2,len(operation_payload_tobyte))
+            body = operation_payload_tobyte
+            self.socket.sendto(header+body, client_address)
 
-        # レスポンス共通化のためにjsonで返却
-        token_json = self.custom_tcp_body_by_json(200,host_token)
-        token_json_encoded = self.encoder(self.encoder(token_json))
-        token_response_header = self.custom_tcp_header(len(room_name),1,2,len(token_json_encoded))
+        else:
+            print( self.chat_room_list)
 
-        # token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
-        # body = room_name_tobyte + token_tobyte
-        body = room_name + token_json_encoded
+            # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
+            #token_tobyte = self.encoder(host_token, 1)
+            #room_name_tobyte = self.encoder(room_name, 1)
 
-        # Send the message
-        self.socket.sendto(token_response_header + body, client_address)
+            # レスポンス共通化のためにjsonで返却
+            token_json = self.custom_tcp_body_by_json(200,host_token)
+            token_json_encoded = self.encoder(self.encoder(token_json))
+            token_response_header = self.custom_tcp_header(len(room_name),1,2,len(token_json_encoded))
+
+            # token_response_header = self.custom_tcp_header(len(room_name_tobyte),1,2,len(token_tobyte))
+            # body = room_name_tobyte + token_tobyte
+            body = room_name + token_json_encoded
+
+            # Send the message
+            self.socket.sendto(token_response_header + body, client_address)
 
 
     def handle_token_response(self, room_name, state, username, client_address):
@@ -385,8 +431,8 @@ class tcp_Server:
         try:
             member_token = generate_user_token()
             room_name_decode = self.decoder(room_name, 'str')
-            self.chat_rooms[room_name_decode]['members'].add((member_token, client_address))
-
+            #self.chat_rooms[room_name_decode]['members'].add((member_token, client_address))
+            self.chat_room_list.add_member_to_chatroom(room_name_decode, member_token, client_address)
         except KeyError:
             print('Chatroom does not exist.')
             operation_payload = self.custom_tcp_body_by_json(404,None)
@@ -420,7 +466,37 @@ class tcp_Server:
             "user_token": token
         }
         return body_json
+      
+    def authorize_to_join_chatroom(self, token, room_name, state, operation_payload, client_address):
+        # tokenとaddressがServerで所持しているtokenに紐づくIPアドレスと一致するか確認する
+        room_name_decode = self.decoder(room_name, 'str')
+        room_members = self.chat_rooms[room_name_decode]['members']
+        client_info = (token, client_address)
+        if client_info in room_members:
+            print('You can join the chatroom.')
+        else:
+            # 一致しなかった場合チャットルーム作成に戻る
+            print('You cannot join the chatroom.')
+            self.initialize_chat_room(room_name, state, operation_payload, client_address)
+        return
 
+class chat_room:
+    def __init__(self):
+        self.chat_room_list = {}
+
+    def create_chat_room(self, room_name, username, host_token, client_address):
+        if room_name not in self.chat_room_list:
+            self.chat_room_list[room_name] = {'host' : set(), 'members': set()}
+            self.chat_room_list[room_name]['host'].add((host_token, username))
+            self.chat_room_list[room_name]['members'].add((host_token, client_address))
+        else:
+            raise ValueError(f"Room name: '{room_name}' is already in use.")
+
+    def add_member_to_chatroom(self, room_name, member_token, client_address):
+        if room_name in self.chat_room_list:
+            self.chat_room_list[room_name]['members'].add((member_token, client_address))
+        else:
+            raise KeyError
 
 def generate_user_token():
     return str(uuid.uuid4())
@@ -428,6 +504,12 @@ def generate_user_token():
 def main():
     # チャットルーム作成/接続のためのサーバーを立ち上げる
     tcp_server = tcp_Server()
+    # udp_server = udp_Server()
+    # udp_server.start()
+    chat_room_list = chat_room()
+
+    #tcp_server = tcp_Server(chat_room_list)
+
     tcp_server.start()
 
     # チャットルーム内でのメッセージ送受信のためのサーバーを立ち上げる

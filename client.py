@@ -270,6 +270,10 @@ class UDPClient:
                     print("チャットルームが存在しません、最初からやり直します。")
                     self.start()
                     break
+                elif state == 2 and operation_payload["status_code"] == 400:
+                    print("処理に失敗しました、最初からやり直します。")
+                    self.start()
+                    break
 
         finally:
             print('closing socket')
