@@ -45,7 +45,7 @@ class udp_Server():
         return
 
     def receive_message(self):
-        print('starting up on port {}'.format(self.server_port))
+        print("UDP Server started. It is on {}, port {}".format(self.server_address, self.server_port))
         try:
             # データの受信を永久に待ち続ける
             while True:
@@ -87,10 +87,10 @@ class udp_Server():
                 print('user_name: received {} bytes data: {}'.format(
                     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
-                if operation == 1:
-                    self.initialize_chat_room(room_name, operation_payload, client_address)
+                #if operation == 1:
+                    #self.initialize_chat_room(room_name, operation_payload, client_address)
 
-                print(self.user_tokens)
+                #print(self.user_tokens)
 
                 # データ準備
                 # username_len = int.from_bytes(data[:1], byteorder='big')
@@ -288,11 +288,10 @@ class tcp_Server:
         # Handle the client connection
         try:
             while True:
-                print('チャットルームの作成をするか、参加するかを選択してください。1か2を選択してください')
-                print("1: チャットルームの作成")
-                print("2: チャットルームに参加")
+                print('\nwaiting for a tcpclient connection')
                 data, client_address = self.socket.accept()
                 print('connection from', client_address)
+                data = data.recv(tcp_Server.buffer_size)
                 self.process_message(data, client_address)
         finally:
             print('closing socket')
@@ -330,16 +329,17 @@ class tcp_Server:
 
         # create room
         if operation == 1:
-            self.initialize_chat_room(room_name, state, operation_payload, client_address)
+            self.initialize_chat_room(room_name_decode, state, operation_payload_decode, client_address)
 
         # join room
-        elif operation == 2:
+        elif operation == 2:            
             # ToDo：クライアントが保持しているトークンを含むUDPパケットを解析して取得する
             client_token = 'decoded udp packet'
             # chat_roomに参加するための許可トークンとIPアドレスを照合する
             self.authorize_to_join_chatroom(self, client_token, client_address, room_name_decode)
-
-            self.handle_token_response(room_name, state, operation_payload, client_address)
+            self.handle_token_response(room_name_decode, state, operation_payload_decode, client_address)
+            
+            # self.handle_token_response(room_name, state, operation_payload, client_address)
 
     def initialize_chat_room(self, room_name, state ,username, client_address):
         # 新しいチャットルームを作成したときに呼び出される関数
@@ -422,7 +422,10 @@ class tcp_Server:
         # Create the body
         body = room_name + self.encoder(username, 1)
 
-        self.socket.sendto(header + body, client_address)
+        try:
+            self.socket.sendto(header + body, client_address)
+        except BrokenPipeError:
+             print("Connection to client was lost.")
 
         #roomが見つからなかったとき、404レスポンス
         try:
@@ -499,13 +502,19 @@ def generate_user_token():
     return str(uuid.uuid4())
 
 def main():
+    # チャットルーム作成/接続のためのサーバーを立ち上げる
+    tcp_server = tcp_Server()
     # udp_server = udp_Server()
     # udp_server.start()
     chat_room_list = chat_room()
 
-    tcp_server = tcp_Server(chat_room_list)
+    #tcp_server = tcp_Server(chat_room_list)
+
     tcp_server.start()
 
+    # チャットルーム内でのメッセージ送受信のためのサーバーを立ち上げる
+    udp_server = udp_Server()
+    udp_server.start()
 
 if __name__ == '__main__':
     main()
