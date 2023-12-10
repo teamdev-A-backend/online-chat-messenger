@@ -10,7 +10,7 @@ class udp_Server():
     BUFFER_SIZE = 4096
     TIME_OUT = 5
 
-    def __init__(self, server_address='0.0.0.0', server_port=9001):
+    def __init__(self, chatroom_list, server_address='0.0.0.0', server_port=9001):
         # 異なるネットワーク上の通信のためソケットドメイン：AF_INETを選択
         # リアルタイム性が必要であるためソケットタイプ：UDPソケットを選択
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -21,7 +21,7 @@ class udp_Server():
         self.active_clients = {}
         # ユーザー名とトークンを関連付ける
         self.user_tokens = {}
-        self.chat_rooms = {} # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
+        self.chat_rooms = chatroom_list # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
         self.room_name = '' # ToDo:tcp_Serverで作成したchat_room_nameを何らかの方法で共有する
 
 
@@ -56,41 +56,50 @@ class udp_Server():
                     len(data), client_address))
                 print(data)
 
-
                 # データ解析
-                header = data[:32]
-                body = data[32:]
+                header = data[:2]
+                body = data[2:]
 
                 # header解析
-                room_name_size =  int.from_bytes(header[:1], byteorder='big')
-                print('\nroom_size: received {} bytes data: {}'.format(
-                    len(header[:1]), room_name_size))
-                operation = int.from_bytes(header[1:2],byteorder='big')
-                print('operation: received {} bytes data: {}'.format(
-                    len(header[1:2]), operation))
-                state = int.from_bytes(header[2:3], byteorder='big')
-                print('state: received {} bytes data: {}'.format(
-                    len(header[2:3]), state))
+                # room_name_size =  int.from_bytes(header[:1], byteorder='big')
+                # print('\nroom_size: received {} bytes data: {}'.format(
+                #     len(header[:1]), room_name_size))
+                # operation = int.from_bytes(header[1:2],byteorder='big')
+                # print('operation: received {} bytes data: {}'.format(
+                #     len(header[1:2]), operation))
+                # state = int.from_bytes(header[2:3], byteorder='big')
+                # print('state: received {} bytes data: {}'.format(
+                #     len(header[2:3]), state))
+                 # operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
+                # print('payload_size: received {} bytes data: {}'.format(
+                #     len(header[3:32]), operation_payload_size))
 
-
-
-                operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
-                print('payload_size: received {} bytes data: {}'.format(
-                    len(header[3:32]), operation_payload_size))
+                # header 解析
+                room_name_size = self.decoder(header[:1],'int')
+                print('\nroom_size: received {} bytes data: {}'.format(len(header[:1]), room_name_size))
+                token_size = self.decoder(header[1:2],'int')
+                print('\ntoken_size: received {} bytes data: {}'.format(len(header[1:2]), token_size))
 
                 # body解析
                 room_name = self.decoder(body[:room_name_size], 'str')
-                print('room_name: received {} bytes data: {}'.format(
-                    len(body[:room_name_size]), room_name))
+                print('room_name: received {} bytes data: {}'.format(len(body[:room_name_size]), room_name))
 
-                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size], 'str')
-                print('user_name: received {} bytes data: {}'.format(
-                    len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+                token = self.decoder(body[room_name_size:room_name_size + token_size])
+                print('token: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + token_size]), token))
 
-                if operation == 1:
-                    self.initialize_chat_room(room_name, operation_payload, client_address)
+                message_byte = body[room_name_size + token_size:]
+                message = self.decoder(message_byte, 'str')
+                print('message: received {} bytes data: {}'.format(len(body[room_name_size + token_size:]), message))
 
-                print(self.user_tokens)
+                if message == '[remove_chatroom]':
+                    target_room = self.chat_rooms[room_name]
+                    user_info = (token, client_address)
+                    if target_room['host'] == user_info:
+                        self.chat_rooms.remove_chatroom(self, room_name, token, client_address)
+                    else:
+                        self.chat_rooms.remove_member_from_chatroom(self, room_name, token, client_address)
+                else:
+                    self.multicast_send(message, room_name)
 
                 # データ準備
                 # username_len = int.from_bytes(data[:1], byteorder='big')
@@ -111,11 +120,28 @@ class udp_Server():
             print('closing socket')
             self.socket.close()
 
-    def multicast(self, body: bytes) -> None:
-        for address in self.active_clients:
-            sent = self.socket.sendto(body, address)
+    def multicast_send(self,message, room_name) -> None:
+        room_name_byte = self.encoder(room_name)
+        header_room_name_encode = self.encoder(room_name_byte)
+        active_clients = self.chat_rooms[room_name]['members']
+
+        for token,  address in self.active_clients:
+            token_encode = self.encoder(token)
+            header_token_encode = self.encoder(token_encode, 1)
+            header = header_room_name_encode + header_token_encode
+
+            message_encode = self.encoder(message)
+            body = room_name_byte + token_encode + message_encode
+
+            sent = self.socket.sendto(header + body, address)
             print('sent {} bytes to {}'.format(sent, address))
         return
+
+    # def multicast(self, body: bytes) -> None:
+    #     for address in self.active_clients:
+    #         sent = self.socket.sendto(body, address)
+    #         print('sent {} bytes to {}'.format(sent, address))
+    #     return
 
     # def encoder(self, data: str) -> bytes:
     #     return data.encode(encoding='utf-8')
@@ -162,7 +188,7 @@ class udp_Server():
         finally:
             print('closing socket')
             self.socket.close()
-    
+
     def is_valid_chatroom(self, chat_rooms, room_name_decode):
         # chatroomの有効/無効の判断をhostの存在有無で行う
         try:
@@ -229,8 +255,6 @@ class udp_Server():
         #operation_payload_size = operation_payload_size.to_bytes(29, byteorder='big')
 
         #return room_name_size + operation + state + operation_payload_size
-
-
 
 
 # ここからTCPサーバーの実装
@@ -463,7 +487,7 @@ class tcp_Server:
             "user_token": token
         }
         return body_json
-      
+
     def authorize_to_join_chatroom(self, token, room_name, state, operation_payload, client_address):
         # tokenとaddressがServerで所持しているtokenに紐づくIPアドレスと一致するか確認する
         room_name_decode = self.decoder(room_name, 'str')
@@ -495,13 +519,43 @@ class chat_room:
         else:
             raise KeyError
 
+    def remove_member_from_chatroom(self, room_name, member_token, client_address):
+        if room_name in self.chat_room_list:
+            room_info = self.chat_room_list[room_name]
+            room_members = room_info['members']
+            client_info = (member_token, client_address)
+            if client_info in room_members:
+                room_members.discard(client_info)
+            else:
+                raise ValueError(f"Room name: '{room_name}' is valid.")
+        else:
+            raise ValueError(f"Room name: '{room_name}' does not exist.")
+
+    def remove_chatroom(self, room_name, member_token, client_address):
+        if room_name in self.chat_room_list:
+            room_info = self.chat_room_list[room_name]
+            room_host = room_info['host']
+            user_info = (member_token, client_address)
+
+            if room_host == user_info:
+                del self.chat_room_list[room_name]
+            else:
+                raise ValueError("User information is incorrect")
+        else:
+            raise ValueError(f"Room name: '{room_name}' does not exist.")
+
+
+
+
+
 def generate_user_token():
     return str(uuid.uuid4())
 
 def main():
-    # udp_server = udp_Server()
-    # udp_server.start()
+
     chat_room_list = chat_room()
+    udp_server = udp_Server(chat_room_list)
+    udp_server.start()
 
     tcp_server = tcp_Server(chat_room_list)
     tcp_server.start()
