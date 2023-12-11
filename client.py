@@ -14,7 +14,12 @@ class TCPClient:
         self.namesize = 0
 
         #サーバーに接続
-        self.socket.connect((self.server_address, self.server_port))
+        try:
+            self.socket.connect((self.server_address, self.server_port))
+            print(f"Connected to server at {self.server_address}:{self.server_port}")
+        except Exception as e:
+                print(f"Error occurred: {e}")
+        
     
     def start(self):
         print(
@@ -87,9 +92,9 @@ class TCPClient:
         body = chatroom_name_to_byte + self.encoder(self.username, 1)
 
         #メッセージの送信
-        sent_user_name = self.socket.sendall(
-            header+body)
-        print('Send {} bytes'.format(sent_user_name))
+        print('sending {!r}'.format(header+body))
+        self.socket.sendall(header+body)
+        print('Send {} bytes'.format(len(header+body)))
 
 
         # データ受信
@@ -290,8 +295,8 @@ def main():
     tcp_client.start()
 
     # メッセージの送受信
-    udp_client = UDPClient()
-    udp_client.start()
+    #udp_client = UDPClient()
+    #udp_client.start()
 
 
 if __name__ == '__main__':
