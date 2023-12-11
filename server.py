@@ -354,14 +354,15 @@ class tcp_Server:
         return
 
     def handle_chat_connection(self):
-        # Handle the client connection
+    # Handle the client connection
         try:
             while True:
                 print('\nwaiting for a tcpclient connection')
-                data, client_address = self.socket.accept()
+                client_socket, client_address = self.socket.accept()
                 print('connection from', client_address)
-                data = data.recv(tcp_Server.buffer_size)
+                data = client_socket.recv(tcp_Server.buffer_size)
                 self.process_message(data, client_address)
+                client_socket.close()
         finally:
             print('closing socket')
             self.socket.close()
@@ -414,8 +415,7 @@ class tcp_Server:
         # 新しいチャットルームを作成したときに呼び出される関数
         print('Start initialize room.')
 
-        operation_payload = 200
-        operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
+        operation_payload_tobyte = self.encoder(username, 1)
 
         # Return an error if the length of room name exceeds the maximum byte size
         if len(room_name) > 2**8:
@@ -429,7 +429,19 @@ class tcp_Server:
         # Create the body
         body = operation_payload_tobyte
 
-        self.socket.sendall(header + body)
+
+        data_to_send = header + body
+        print(f"Sending data: {data_to_send}")
+        
+        try:
+            self.socket.sendall(data_to_send)
+            print("Data sent.")
+        except BrokenPipeError:
+            print("Connection was closed by the client.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    
+
         host_token = generate_user_token()
         self.user_tokens[host_token] = username
 
@@ -467,7 +479,7 @@ class tcp_Server:
             body = room_name + token_json_encoded
 
             # Send the message
-            self.socket.sendto(token_response_header + body, client_address)
+            self.socket.sendall(token_response_header + body)
 
 
     def handle_token_response(self, room_name, state, username, client_address):
@@ -476,8 +488,7 @@ class tcp_Server:
 
         # Process the token and perform necessary actions
 
-        operation_payload = 200
-        operation_payload_tobyte = operation_payload.to_bytes(1, byteorder='big')
+        operation_payload_tobyte = username.encode(encoding='utf-8')
 
         # Return an error if the length of room name exceeds the maximum byte size
         if len(room_name) > 2**8:
@@ -609,18 +620,17 @@ def main():
 
     # チャットルーム作成/接続のためのサーバーを立ち上げる
     tcp_server = tcp_Server(chat_room_list)
+    tcp_server.start()
     # udp_server = udp_Server()
     # udp_server.start()
-    udp_server = udp_Server(chat_room_list)
-
-    tcp_server.start()
-    udp_server.start()
+    #udp_server = udp_Server(chat_room_list)
+    #udp_server.start()
 
     #tcp_server = tcp_Server(chat_room_list)
 
     # チャットルーム内でのメッセージ送受信のためのサーバーを立ち上げる
-    udp_server = udp_Server()
-    udp_server.start()
+    #udp_server = udp_Server()
+    #udp_server.start()
 
 if __name__ == '__main__':
     main()
