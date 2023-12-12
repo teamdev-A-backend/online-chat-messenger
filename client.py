@@ -19,8 +19,8 @@ class TCPClient:
             print(f"Connected to server at {self.server_address}:{self.server_port}")
         except Exception as e:
                 print(f"Error occurred: {e}")
-        
-    
+
+
     def start(self):
         print(
             f'server address:{self.server_address}, server port:{self.server_port}')
@@ -35,13 +35,15 @@ class TCPClient:
         # ユーザー名送信
         self.send_username(operation_type, chatroom_name)
 
-        
+        thread_receive_message = threading.Thread(
+            target=self.receive_message, daemon=True)
+
         #thread_send_message.start()
-        #thread_receive_message.start()
+        thread_receive_message.start()
 
         #thread_send_message.join()
-        #thread_receive_message.join()
-    
+        thread_receive_message.join()
+
     def encoder(self, data, intsize: int = 1):
         if type(data) == str:
             return data.encode(encoding='utf-8') # to bytes
@@ -128,8 +130,62 @@ class TCPClient:
         print('user_name: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
 
         return
-    
-    
+
+    def receive_message(self):
+        try:
+            while True:
+                # 応答を受信
+                #data, _ = self.socket.recvfrom(UDPClient.BUFFER_SIZE)
+                data = self.socket.recv(TCPClient.BUFFER_SIZE)
+                print('\n received {!r}'.format(data))
+                # データ解析
+                header = data[:32]
+                body = data[32:]
+
+                # header解析
+                room_name_size =  int.from_bytes(header[:1], byteorder='big')
+                print('\nroom_size: received {} bytes data: {}'.format(
+                    len(header[:1]), room_name_size))
+                operation = int.from_bytes(header[1:2],byteorder='big')
+                print('operation: received {} bytes data: {}'.format(
+                    len(header[1:2]), operation))
+                state = int.from_bytes(header[2:3], byteorder='big')
+                print('state: received {} bytes data: {}'.format(
+                    len(header[2:3]), state))
+
+                operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
+                print('payload_size: received {} bytes data: {}'.format(
+                    len(header[3:32]), operation_payload_size))
+
+                # body解析
+                room_name = self.decoder(body[:room_name_size], 'str')
+                print('room_name: received {} bytes data: {}'.format(
+                    len(body[:room_name_size]), room_name))
+
+                #operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size], 'str')
+                operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size],'dict')
+                print('user_name: received {} bytes data: {}'.format(
+                    len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+
+                if state == 2 and operation_payload["status_code"] == 200:
+                    self.user_token = operation_payload["user_token"]
+                    print(self.user_token)
+                    break
+                elif state == 2 and operation_payload["status_code"] == 404:
+                    print("チャットルームが存在しません、最初からやり直します。")
+                    self.start()
+                    break
+                elif state == 2 and operation_payload["status_code"] == 400:
+                    print("処理に失敗しました、最初からやり直します。")
+                    self.start()
+                    break
+
+        finally:
+            print('closing socket')
+            self.socket.close()
+
+
+
 
     def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
         room_name_size = room_name_size.to_bytes(1, byteorder='big')
@@ -176,7 +232,7 @@ class UDPClient:
     def start(self):
         print(
             f'server address:{self.server_address}, server port:{self.server_port}')
-        
+
 
         #メッセージの送信
         thread_send_message = threading.Thread(target=self.send_message)
@@ -187,7 +243,7 @@ class UDPClient:
 
         thread_send_message.join()
         thread_receive_message.join()
-    
+
     def encoder(self, data, intsize: int = 1):
         if type(data) == str:
             return data.encode(encoding='utf-8') # to bytes
@@ -231,7 +287,7 @@ class UDPClient:
         finally:
             print('closing socket')
             self.socket.close()
-    
+
     def receive_message(self):
         try:
             while True:

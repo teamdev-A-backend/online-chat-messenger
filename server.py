@@ -313,7 +313,7 @@ class tcp_Server:
         self.address = '0.0.0.0'
         self.port = 12345
         self.socket.bind((self.address, self.port))
-        self.socket.listen(1)
+        self.socket.listen(10)
         self.user_tokens = {}
         self.chat_room_list = chatroom_list
 
@@ -404,27 +404,27 @@ class tcp_Server:
 
         # create room
         if operation == 1:
-            self.initialize_chat_room(room_name_decode, state, operation_payload_decode, client_socket)
+            self.initialize_chat_room(room_name, state, operation_payload_decode, client_socket)
 
         # join room
-        elif operation == 2:            
+        elif operation == 2:
             # ToDo：クライアントが保持しているトークンを含むUDPパケットを解析して取得する
             client_token = 'decoded udp packet'
             # chat_roomに参加するための許可トークンとIPアドレスを照合する
-            self.authorize_to_join_chatroom(self, client_token, client_socket, room_name_decode)
-            self.handle_token_response(room_name_decode, state, operation_payload_decode, client_socket)
-            
+            #self.authorize_to_join_chatroom(self, client_token, client_socket, room_name_decode)
+            self.handle_token_response(room_name, state, operation_payload_decode, client_socket)
+
             # self.handle_token_response(room_name, state, operation_payload, client_address)
 
     def initialize_chat_room(self, room_name, state ,username, client_socket):
         # 新しいチャットルームを作成したときに呼び出される関数
         print('Start initialize room.')
 
-        operation_payload_tobyte = self.encoder(username, 1)
-        room_name_encode = self.encoder(room_name, 1)
+        operation_payload = 200
+        operation_payload_tobyte = self.encoder(operation_payload,1)
 
         # Return an error if the length of room name exceeds the maximum byte size
-        if len(room_name_encode) > 2**8:
+        if len(room_name) > 2**8:
             raise ValueError('The length of room name is too long.')
         # Return an error if the length of operation payload exceeds the maximum byte size
         if len(operation_payload_tobyte) > 2**29:
@@ -433,12 +433,12 @@ class tcp_Server:
         # Create the header
         header = self.custom_tcp_header(0, 1, 1, len(operation_payload_tobyte))
         # Create the body
-        body = room_name_encode + operation_payload_tobyte
+        body = operation_payload_tobyte
 
         print(f"header: {header}", f"body: {body}")
         data_to_send = header + body
         print(f"Sending data: {data_to_send}")
-        
+
         try:
             client_socket.sendall(data_to_send)
             print("Data sent.")
@@ -446,7 +446,7 @@ class tcp_Server:
             print("Connection was closed by the client.")
         except Exception as e:
             print(f"An error occurred: {e}")
-    
+
 
         host_token = generate_user_token()
         self.user_tokens[host_token] = username
@@ -457,20 +457,21 @@ class tcp_Server:
         # self.chat_rooms[room_name_decode] = {'host' : set(), 'members': set()}
         # self.chat_rooms[room_name_decode]['host'].add((host_token, username))
         # self.chat_rooms[room_name_decode]['members'].add((host_token, client_address))
+        print(f"client_ip: {client_socket.getpeername()}")
 
         try:
-            self.chat_room_list.create_chat_room(room_name_decode, username, host_token, client_address)
+            self.chat_room_list.create_chat_room(room_name_decode, username, host_token, client_socket.getpeername())
 
         except ValueError:
             operation_payload = self.custom_tcp_body_by_json(400,None)
             operation_payload_tobyte = self.encoder(self.encoder(operation_payload))
             header = self.custom_tcp_header(0,1,2,len(operation_payload_tobyte))
             body = operation_payload_tobyte
-            self.socket.sendto(header+body, client_address)
+            client_socket.sendall(header+body)
 
         else:
-            print( self.chat_room_list)
-
+            print('\n')
+            print(f"active_chatrooms: {self.chat_room_list.chat_room_list}")
             # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
             #token_tobyte = self.encoder(host_token, 1)
             #room_name_tobyte = self.encoder(room_name, 1)
@@ -485,16 +486,17 @@ class tcp_Server:
             body = room_name + token_json_encoded
 
             # Send the message
-            self.socket.sendall(token_response_header + body)
+            client_socket.sendall(token_response_header + body)
 
 
-    def handle_token_response(self, room_name, state, username, client_address):
+    def handle_token_response(self, room_name, state, username, client_socket):
         # 新しいユーザーがチャットルームに参加したときに呼び出される関数
         print('Handle token response.')
 
         # Process the token and perform necessary actions
 
-        operation_payload_tobyte = username.encode(encoding='utf-8')
+        operation_payload = 200
+        operation_payload_tobyte = self.encoder(operation_payload,1)
 
         # Return an error if the length of room name exceeds the maximum byte size
         if len(room_name) > 2**8:
@@ -504,28 +506,30 @@ class tcp_Server:
             raise ValueError('The length of operation payload is too long.')
 
         # Create the header
-        header = self.custom_tcp_header(len(room_name), 1, 1, len(operation_payload_tobyte))
+        header = self.custom_tcp_header(0, 1, 1, len(operation_payload_tobyte))
         # Create the body
-        body = room_name + self.encoder(username, 1)
+        body = operation_payload_tobyte
 
         try:
-            self.socket.sendto(header + body, client_address)
+            client_socket.sendall(header + body)
         except BrokenPipeError:
              print("Connection to client was lost.")
 
-        #roomが見つからなかったとき、404レスポンス
+
         try:
+            client_address_port = client_socket.getpeername()
             member_token = generate_user_token()
             room_name_decode = self.decoder(room_name, 'str')
-            #self.chat_rooms[room_name_decode]['members'].add((member_token, client_address))
-            self.chat_room_list.add_member_to_chatroom(room_name_decode, member_token, client_address)
+            #self.chat_room_list[room_name_decode]['members'].add((member_token, client_address_port))
+            self.chat_room_list.add_member_to_chatroom(room_name_decode, member_token, client_address_port)
+        #roomが見つからなかったとき、404レスポンス
         except KeyError:
             print('Chatroom does not exist.')
             operation_payload = self.custom_tcp_body_by_json(404,None)
             operation_payload_tobyte =self.encoder(self.encoder(operation_payload))
             header = self.custom_tcp_header(0,2,2,len(operation_payload_tobyte))
             body = operation_payload_tobyte
-            self.socket.sendto(header+body, client_address)
+            client_socket.sendall(header+body)
 
         else:
             body_json = self.custom_tcp_body_by_json(200,member_token)
@@ -533,8 +537,9 @@ class tcp_Server:
 
             member_response_header = self.custom_tcp_header(len(room_name),2,2,len(body_json_encoded))
             member_response_body = room_name + body_json_encoded
-            self.socket.sendto(member_response_header+member_response_body, client_address)
-            print(self.chat_rooms)
+            client_socket.sendall(member_response_header+member_response_body)
+            print('\n')
+            print(f"active_chatrooms: {self.chat_room_list.chat_room_list}")
 
 
     def custom_tcp_header(self, room_name_size, operation, state, operation_payload_size):
