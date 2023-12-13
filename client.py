@@ -272,6 +272,11 @@ class UDPClient:
             return json.loads(data)
         else:
             print('Invalid data was specified.')
+    
+    def custom_udp_header(self, room_name_size: int, token_size: int):
+        room_name_size_byte = room_name_size.to_bytes(1, byteorder='big')
+        token_size_byte = token_size.to_bytes(1, byteorder='big')
+        return room_name_size_byte + token_size_byte
 
 
     def send_message(self, room_name, token):
@@ -285,20 +290,23 @@ class UDPClient:
                 # message += self.encoder(self.username, 1)
                 # message += self.encoder(message_body, 1)
                 # print('sending {!r}'.format(message))
-                
+
 
                 room_name_size = len(self.encoder(room_name, 1))
                 token_size = len(self.encoder(token, 1))
 
-                message = room_name_size.to_bytes(length=1, byteorder='big')
-                message += token_size.to_bytes(length=1, byteorder='big')
-                message += self.encoder(message_body, 1)
-                print('sending {!r}'.format(message))
+                header = self.custom_udp_header(room_name_size=room_name_size, token_size=token_size)
+
+                body = room_name_size.to_bytes(length=1, byteorder='big')
+                body += token_size.to_bytes(length=1, byteorder='big')
+                body += self.encoder(message_body, 1)
+
+                print('sending {!r}'.format(header + body))
 
                 # udpサーバへのデータ送信
                 print("udp_client_socket: ", self.socket)
                 sent = self.socket.sendto(
-                    message, (self.server_address, self.server_port))
+                    header+body, (self.server_address, self.server_port))
                 print('Send {} bytes'.format(sent))
         finally:
             print('closing socket')
