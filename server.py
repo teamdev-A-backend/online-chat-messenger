@@ -34,14 +34,14 @@ class udp_Server():
             target=self.receive_message, daemon=True)
         thread_receive_message.start()
 
-        thread_check_room_validity = threading.Thread(
-            target=self.check_chatroom_validity, args=(self.chat_rooms, self.room_name), daemon=True)
-        thread_check_room_validity.start()
+        # thread_check_room_validity = threading.Thread(
+        #     target=self.check_chatroom_validity, args=(self.chat_rooms, self.room_name), daemon=True)
+        # thread_check_room_validity.start()
 
         # join()でデーモンスレッド終了を待つ:https://bty.sakura.ne.jp/wp/archives/69
         # thread_check_timeout.join()
         thread_receive_message.join()
-        thread_check_room_validity.join()
+        # thread_check_room_validity.join()
         return
 
     def receive_message(self):
@@ -115,7 +115,7 @@ class udp_Server():
                         sent = self.socket.sendto(header + body, client_address)
 
                     else:
-                        self.chat_rooms[room_name]['timestamp'][token] = time.time()
+                        # self.chat_rooms[room_name]['timestamp'][token] = time.time()
                         self.multicast_send(message, room_name)
 
                 #if operation == 1:
@@ -487,6 +487,8 @@ class tcp_Server:
 
             # Send the message
             client_socket.sendall(token_response_header + body)
+            udp_server = udp_Server(self.chat_room_list)
+            udp_server.start()
 
 
     def handle_token_response(self, room_name, state, username, client_socket):
