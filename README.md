@@ -136,7 +136,24 @@ class UDPClient {
 ## プログラムのデモ
 
 ## TCP通信について
+-  TCP（Transmission Control Protocol）は、インターネットプロトコルスイートの一部であり、ネットワークを介してデータを送受信するためのプロトコルの一つです。TCPは、データの送受信を確実に行うための信頼性の高い接続を提供します。今回のchat room作成/接続は送受信の確実性の観点から採用しました。
+
+
+- ヘッダー（32バイト）：RoomNameSize（1バイト） | Operation（1バイト） | State（1バイト） | OperationPayloadSize（29バイト）
+- ボディ：最初のRoomNameSizeバイトがルーム名で、その後にOperationPayloadSizeバイトが続きます。ルーム名の最大バイト数は2^8バイトであり、OperationPayloadSizeの最大バイト数は2^29バイトです。
+
 
 ## UDP通信について
+- UDP（User Datagram Protocol）は、インターネットプロトコルスイートの一部であり、ネットワークを介してデータを送受信するためのプロトコルの一つです。UDPは、データの送受信を高速に行うためのシンプルな接続を提供します。
+
+
+- Client側でメッセージのサイズを検証。4096を超えたら再入力を促す。
+- ヘッダー：RoomNameSize（1バイト）| TokenSize（1バイト）
+- ボディ：最初のRoomNameSizeバイトはルーム名、次のTokenSizeバイトはトークン文字列、そしてその残りが実際のメッセージです。
+
+
+
+
+
 
 
