@@ -297,8 +297,10 @@ class UDPClient:
 
                 header = self.custom_udp_header(room_name_size=room_name_size, token_size=token_size)
 
-                body = room_name_size.to_bytes(length=1, byteorder='big')
-                body += token_size.to_bytes(length=1, byteorder='big')
+                # body = room_name_size.to_bytes(length=1, byteorder='big')
+                body = self.encoder(room_name, 1)
+                # body += token_size.to_bytes(length=1, byteorder='big')
+                body += self.encoder(token, 1)
                 body += self.encoder(message_body, 1)
 
                 print('sending {!r}'.format(header + body))

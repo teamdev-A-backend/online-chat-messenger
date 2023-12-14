@@ -21,7 +21,7 @@ class udp_Server():
         self.active_clients = {}
         # ユーザー名とトークンを関連付ける
         self.user_tokens = {}
-        self.chat_rooms = chatroom_list # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
+        self.chat_rooms = chatroom_list.chatroom_list # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
         self.room_name = '' # ToDo:tcp_Serverで作成したchat_room_nameを何らかの方法で共有する
 
 
