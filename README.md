@@ -89,6 +89,49 @@ tcp_Server o-- chat_room
 udp_Server o-- chat_room
 
 ```
+### client
+```mermaid
+classDiagram
+    class TCPClient {
+        -NAME_SIZE: int
+        -BUFFER_SIZE: int
+        -socket: socket
+        -server_address: str
+        -server_port: int
+        -username: str
+        -namesize: int
+        +__init__(server_address: str, server_port: int): None
+        +start(): None
+        +encoder(data: Any, intsize: int): bytes
+        +decoder(data: bytes, result_type: str): Any
+        +set_username(): None
+        +send_username(operation: int, chatroom_name: str): None
+        +receive_message(): None
+        +custom_tcp_header(room_name_size: int, operation: int, state: int, operation_payload_size: int): bytes
+        +select_action_mode(): int
+        +input_room_name(): str
+    }
+
+class UDPClient {
+        -BUFFER_SIZE: int
+        -socket: socket
+        -server_address: str
+        -server_port: int
+        -client_address: str
+        -client_port: int
+        -username: str
+        -room_name: str
+        -user_token: str
+        -namesize: int
+        +__init__(server_address: str, server_port: int, room_name: str, user_token: str): None
+        +start(): None
+        +encoder(data: Any, intsize: int): bytes
+        +decoder(data: bytes, result_type: str): Any
+        +send_message(room_name: str, token: str): None
+        +receive_message(): None
+    }
+
+```
 
 ## プログラムのデモ
 
