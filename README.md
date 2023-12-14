@@ -31,7 +31,7 @@ graph TD
    - client.pyをudp_clientとtcp_client
    に分けるようにしてTCP→UDPの処理をスムーズに開発できるようにしました。
 2. 
-## ER図
+## クラス図
 
 ### 1. server
 ```mermaid
@@ -57,8 +57,53 @@ class tcp_Server {
   +check_timeout()
   +is_valid_chatroom()
   +check_chatroom_validity()
+}
+
+class udp_Server {
+  +BUFFER_SIZE: int
+  +TIME_OUT: int
+  +server_address: str
+  +server_port: int
+  +socket: socket.socket
+  +chat_room_list: dict
+  +active_clients: dict
+  +user_token: dict
+  +room_name: str
+
+  +init(tcp_address: tuple, udp_address: tuple): None
+  +start(): None
+  +receive_message(): None
+  +multicast_send()
+  +check_inactive_clients(): None
+  +encoder()
+  +decoder()
+  +check_timeout()
+  +is_valid_chatroom()
+  +check_chatroom_validity()
 
 }
+class ChatRoom {
+  -TIMEOUT: int
+  -clients: dict
+  -verified_token_to_address: dict
+  -name: str
+  -is_password_required: bool
+  -password: str
+
+  +init(name: str, password: str)
+  +add_client(client: ChatClient): bool
+  +remove_client(name: str): None
+  +remove_all_clients(): None
+  +check_timeout(): None
+  +notify_disconnection(client: ChatClient): None
+  +broadcast(address: str, token: str, msg: str): bool
+  +is_authenticated(address: str, token: str): bool
+  +get_client_by_name(name: str): ChatClient
+  +delete_inactive_clients(address: str, token: str): None
+}
+
+ChatRoom o-- udp_Server
+ChatRoom o-- tcp_Server
 
 ```
 
