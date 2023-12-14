@@ -348,17 +348,18 @@ class tcp_Server:
 
     def start(self):
         # Start the TCP server
-        thread_chat = threading.Thread(target=self.handle_chat_connection, daemon=True)
-        thread_chat.start()
-        thread_chat.join()
+        while True:
+            client_socket, client_address = self.socket.accept()
+            thread_chat = threading.Thread(target=self.handle_chat_connection, args=(client_socket, client_address), daemon=True)
+            thread_chat.start()
+            thread_chat.join()
         return
 
-    def handle_chat_connection(self):
+    def handle_chat_connection(self, client_socket, client_address):
     # Handle the client connection
         try:
-            while True:
+            #while True:
                 print('\nwaiting for a tcpclient connection')
-                client_socket, client_address = self.socket.accept()
                 print('connection from', client_address)
                 print("client_socket: ", client_socket)
                 data = client_socket.recv(tcp_Server.buffer_size)
@@ -367,7 +368,7 @@ class tcp_Server:
                 client_socket.close()
         finally:
             print('closing socket')
-            self.socket.close()
+            #self.socket.close()
 
 
 
@@ -487,8 +488,10 @@ class tcp_Server:
 
             # Send the message
             client_socket.sendall(token_response_header + body)
-            udp_server = udp_Server(self.chat_room_list)
-            udp_server.start()
+            # udp_server = udp_Server(self.chat_room_list)
+            # udp_server.start()
+            # thread_udp_server = threading.Thread(target=udp_server.start, daemon=True)
+            # thread_udp_server.start()
 
 
     def handle_token_response(self, room_name, state, username, client_socket):
@@ -633,11 +636,24 @@ def main():
 
     # チャットルーム作成/接続のためのサーバーを立ち上げる
     tcp_server = tcp_Server(chat_room_list)
-    tcp_server.start()
+    udp_server = udp_Server(chat_room_list)
+
+    thread_tcp_server = threading.Thread(target=tcp_server.start, daemon=True)
+    thread_udp_server = threading.Thread(target=udp_server.start, daemon=True)
+
+    thread_udp_server.start()
+
+    thread_tcp_server.start()
+
+    thread_udp_server.join()
+    thread_tcp_server.join()
+
+
+
     # udp_server = udp_Server()
     # udp_server.start()
-    #udp_server = udp_Server(chat_room_list)
-    #udp_server.start()
+    # udp_server = udp_Server(chat_room_list)
+    # udp_server.start()
 
     #tcp_server = tcp_Server(chat_room_list)
 

@@ -199,7 +199,7 @@ class TCPClient:
 
         finally:
             print('closing socket')
-            # self.socket.close()
+            self.socket.close()
 
 
 
