@@ -21,7 +21,7 @@ class udp_Server():
         self.active_clients = {}
         # ユーザー名とトークンを関連付ける
         self.user_tokens = {}
-        self.chat_rooms = chatroom_list.chatroom_list # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
+        self.chat_rooms = chatroom_list.chat_room_list # ToDo:tcp_Serverのchat_roomsを何らかの方法で共有する
         self.room_name = '' # ToDo:tcp_Serverで作成したchat_room_nameを何らかの方法で共有する
 
 
@@ -143,16 +143,16 @@ class udp_Server():
             self.socket.close()
 
     def multicast_send(self,message, room_name) -> None:
-        room_name_byte = self.encoder(room_name)
-        header_room_name_encode = self.encoder(room_name_byte)
+        room_name_byte = self.encoder(room_name,1)
+        header_room_name_encode = self.encoder(len(room_name_byte),1)
         active_clients = self.chat_rooms[room_name]['members']
 
         for token,  address in active_clients:
-            token_encode = self.encoder(token)
-            header_token_encode = self.encoder(token_encode, 1)
+            token_encode = self.encoder(token, 1)
+            header_token_encode = self.encoder(len(token_encode), 1)
             header = header_room_name_encode + header_token_encode
 
-            message_encode = self.encoder(message)
+            message_encode = self.encoder(message, 1)
             body = room_name_byte + token_encode + message_encode
 
             sent = self.socket.sendto(header + body, address)

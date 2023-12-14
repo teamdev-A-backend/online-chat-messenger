@@ -25,6 +25,13 @@ class TCPClient:
         print(
             f'server address:{self.server_address}, server port:{self.server_port}')
 
+        client_address = socket.gethostbyname(socket.gethostname())
+        print(f"client_address: {client_address}")
+
+        #self.socket.bind((client_address,0))
+        client_port = self.socket.getsockname()[1]
+        print(f"client_port: {client_port}")
+
         #チャットルーム新規作成か参加か選ぶ
         operation_type = self.select_action_mode()
 
@@ -166,13 +173,19 @@ class TCPClient:
                 operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size],'dict')
                 print('user_name: received {} bytes data: {}'.format(
                     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+                client_address = socket.gethostbyname(socket.gethostname())
+                print(f"client_address: {client_address}")
+
+                #self.socket.bind((client_address,0))
+                client_port = self.socket.getsockname()[1]
+                print(f"client_port: {client_port}")
 
                 if state == 2 and operation_payload["status_code"] == 200:
                     self.user_token = operation_payload["user_token"]
                     print(self.user_token)
                     print('closing socket')
                     self.socket.close()
-                    udp_client = UDPClient(room_name=room_name, user_token=self.user_token)
+                    udp_client = UDPClient(room_name=room_name, user_token=self.user_token,client_address=client_address, client_port=client_port)
                     udp_client.start()
                     break
                 elif state == 2 and operation_payload["status_code"] == 404:
@@ -220,17 +233,18 @@ class TCPClient:
 
 class UDPClient:
     BUFFER_SIZE = 4094
-    def __init__(self, server_address='0.0.0.0', server_port=9001, room_name = '', user_token = ''):
+    def __init__(self, server_address='0.0.0.0', server_port=9001, room_name = '', user_token = '', client_address='', client_port=''):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_address = server_address
         self.server_port = server_port
 
-        self.client_address = self.socket.getsockname()[0]
-        self.client_port = self.socket.getsockname()[1]
+        #self.client_address = self.socket.getsockname()[0]
+        #self.client_port = self.socket.getsockname()[1]
         self.username = ''
         self.room_name = room_name
         self.user_token = user_token
         self.namesize = 0
+        self.socket.bind((client_address, client_port))
 
         #サーバーに接続
         # self.socket.connect((self.server_address, self.server_port))
@@ -239,6 +253,8 @@ class UDPClient:
         print(
             f'server address:{self.server_address}, server port:{self.server_port}')
 
+        local_address = self.socket.getsockname()
+        print(f"udp_client_ip: {local_address[0]}, port: {local_address[1]}")
 
         #メッセージの送信
         thread_send_message = threading.Thread(target=self.send_message, args=(self.room_name, self.user_token))
@@ -272,7 +288,7 @@ class UDPClient:
             return json.loads(data)
         else:
             print('Invalid data was specified.')
-    
+
     def custom_udp_header(self, room_name_size: int, token_size: int):
         room_name_size_byte = room_name_size.to_bytes(1, byteorder='big')
         token_size_byte = token_size.to_bytes(1, byteorder='big')
