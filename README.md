@@ -36,74 +36,57 @@ graph TD
 ### 1. server
 ```mermaid
 classDiagram
-class tcp_Server {
-  +BUFFER_SIZE: int
-  +TIME_OUT: int
-  +server_address: str
-  +server_port: int
-  +socket: socket.socket
-  +chat_room_list: dict
-  +active_clients: dict
-  +user_token: dict
-  +room_name: str
-
-  +init(tcp_address: tuple, udp_address: tuple): None
-  +start(): None
-  +receive_message(): None
-  +multicast_send()
-  +check_inactive_clients(): None
-  +encoder()
-  +decoder()
-  +check_timeout()
-  +is_valid_chatroom()
-  +check_chatroom_validity()
-}
-
-class udp_Server {
-  +BUFFER_SIZE: int
-  +TIME_OUT: int
-  +server_address: str
-  +server_port: int
-  +socket: socket.socket
-  +chat_room_list: dict
-  +active_clients: dict
-  +user_token: dict
-  +room_name: str
-
-  +init(tcp_address: tuple, udp_address: tuple): None
-  +start(): None
-  +receive_message(): None
-  +multicast_send()
-  +check_inactive_clients(): None
-  +encoder()
-  +decoder()
-  +check_timeout()
-  +is_valid_chatroom()
-  +check_chatroom_validity()
-
-}
-class ChatRoom {
-  -TIMEOUT: int
-  -clients: dict
-  -verified_token_to_address: dict
-  -name: str
-  -is_password_required: bool
-  -password: str
-
-  +init(name: str, password: str)
-  +add_client(client: ChatClient): bool
-  +remove_client(name: str): None
-  +remove_all_clients(): None
-  +check_timeout(): None
-  +notify_disconnection(client: ChatClient): None
-  +broadcast(address: str, token: str, msg: str): bool
-  +is_authenticated(address: str, token: str): bool
-  +get_client_by_name(name: str): ChatClient
-  +delete_inactive_clients(address: str, token: str): None
-}
-
-ChatRoom o-- udp_Server
-ChatRoom o-- tcp_Server
+    class udp_Server {
+        -BUFFER_SIZE: int
+        -TIME_OUT: int
+        -socket: socket
+        -server_address: str
+        -server_port: int
+        -active_clients: dict
+        -user_tokens: dict
+        -chat_rooms: list
+        -room_name: str
+        +__init__(chatroom_list: list, server_address: str, server_port: int)
+        +start(): None
+        -receive_message(): None
+        -multicast_send(message: str, room_name: str): None
+        -check_inactive_clients(): None
+        -encoder(data: str, intsize: int): bytes
+        -decoder(data: bytes, result_type: str): str
+        -check_timeout(): None
+        -is_valid_chatroom(chat_rooms: dict, room_name_decode: str): bool
+        -check_chatroom_validity(chat_rooms: dict, room_name_decode: str): None
+    }
+ class tcp_Server {
+        -buffer_size: int
+        -time_out: int
+        -socket: socket
+        -address: str
+        -port: int
+        -user_tokens: dict
+        -chat_room_list: list
+        +__init__(chatroom_list: list)
+        +encoder(data: str, intsize: int): bytes
+        +decoder(data: bytes, result_type: str): str
+        +start(): None
+        -handle_chat_connection(): None
+        -process_message(data: bytes, client_socket: socket): None
+        -initialize_chat_room(room_name: bytes, state: int, username: str, client_socket: socket): None
+        -handle_token_response(room_name: bytes, state: int, username: str, client_socket: socket): None
+        -custom_tcp_header(room_name_size: int, operation: int, state: int, operation_payload_size: int): bytes
+        -custom_tcp_body_by_json(status_code: int, token: str): dict
+        -authorize_to_join_chatroom(token: str, room_name: bytes, state: int, operation_payload: str, client_address: tuple): None
+    }
+class chat_room {
+        -chat_room_list: dict
+        +__init__(): None
+        +create_chat_room(room_name: str, username: str, host_token: str, client_address: tuple): None
+        +add_member_to_chatroom(room_name: str, member_token: str, client_address: tuple): None
+        +remove_member_from_chatroom(room_name: str, member_token: str, client_address: tuple): None
+        +remove_chatroom(room_name: str, member_token: str, client_address: tuple): None
+    }
+tcp_Server o-- chat_room
+udp_Server o-- chat_room
 
 ```
 
