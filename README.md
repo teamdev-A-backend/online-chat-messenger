@@ -31,7 +31,7 @@ graph TD
    - client.pyをudp_clientとtcp_client
    に分けるようにしてTCP→UDPの処理をスムーズに開発できるようにしました。
 2. 
-## クラス図
+## UML図
 
 ### 1. server
 ```mermaid
