@@ -33,6 +33,34 @@ graph TD
 2. 
 ## ER図
 
+### 1. server
+```mermaid
+classDiagram
+class tcp_Server {
+  +BUFFER_SIZE: int
+  +TIME_OUT: int
+  +server_address: str
+  +server_port: int
+  +socket: socket.socket
+  +chat_room_list: dict
+  +active_clients: dict
+  +user_token: dict
+  +room_name: str
+
+  +init(tcp_address: tuple, udp_address: tuple): None
+  +start(): None
+  +receive_message(): None
+  +multicast_send()
+  +check_inactive_clients(): None
+  +encoder()
+  +decoder()
+  +check_timeout()
+  +is_valid_chatroom()
+  +check_chatroom_validity()
+
+}
+
+```
 
 ## プログラムのデモ
 
