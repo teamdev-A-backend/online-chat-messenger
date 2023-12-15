@@ -29,8 +29,10 @@ graph TD
 1. このプロジェクトではUDP/TCP通信で処理を進めていることからクラスを
    - server.pyをudp_serverとtcp_server
    - client.pyをudp_clientとtcp_client
+   
    に分けるようにしてTCP→UDPの処理をスムーズに開発できるようにしました。
-2. 
+   
+2. chat_roomクラスを別で作ってユーザーを各クラス間で伝達しやすくしました。
 ## UML図
 
 ### 1. server
