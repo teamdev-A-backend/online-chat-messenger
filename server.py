@@ -52,9 +52,9 @@ class udp_Server():
                 print('\nwaiting to receive message')
                 data, client_address = self.socket.recvfrom(udp_Server.BUFFER_SIZE)
                 # 同一PC内の場合はループバックアドレス(127.0.0.1), clientのportが返却
-                print('received {} bytes from {}'.format(
-                    len(data), client_address))
-                print(data)
+                # print('received {} bytes from {}'.format(
+                #     len(data), client_address))
+                # print(data)
 
                 # データ解析
                 header = data[:2]
@@ -76,24 +76,27 @@ class udp_Server():
 
                 # header 解析
                 room_name_size = self.decoder(header[:1],'int')
-                print('\nroom_size: received {} bytes data: {}'.format(len(header[:1]), room_name_size))
+                # print('\nroom_size: received {} bytes data: {}'.format(len(header[:1]), room_name_size))
                 token_size = self.decoder(header[1:2],'int')
-                print('\ntoken_size: received {} bytes data: {}'.format(len(header[1:2]), token_size))
+                # print('\ntoken_size: received {} bytes data: {}'.format(len(header[1:2]), token_size))
 
+                print('\n---received data -----')
                 # body解析
                 room_name = self.decoder(body[:room_name_size], 'str')
-                print('room_name: received {} bytes data: {}'.format(len(body[:room_name_size]), room_name))
+                # print('room_name: received {} bytes data: {}'.format(len(body[:room_name_size]), room_name))
+                print('room_name: {}'.format(room_name))
 
                 token = self.decoder(body[room_name_size:room_name_size + token_size])
-                print('token: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + token_size]), token))
+                # print('token: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + token_size]), token))
+                print('token: {}'.format(token))
 
                 message_byte = body[room_name_size + token_size:]
                 if(len(message_byte) > 4094):
                     raise ValueError('The length of room name is too long.')
                 else:
                     message = self.decoder(message_byte, 'str')
-                    print('message: received {} bytes data: {}'.format(len(body[room_name_size + token_size:]), message))
-
+                    # print('message: received {} bytes data: {}'.format(len(body[room_name_size + token_size:]), message))
+                    print('received message: {}'.format(message))
                     if message == '[remove_chatroom]':
                         target_room = self.chat_rooms[room_name]
                         user_info = (token, client_address)
@@ -360,10 +363,10 @@ class tcp_Server:
         try:
             #while True:
                 print('\nwaiting for a tcpclient connection')
-                print('connection from', client_address)
-                print("client_socket: ", client_socket)
+                # print('connection from', client_address)
+                # print("client_socket: ", client_socket)
                 data = client_socket.recv(tcp_Server.buffer_size)
-                print("data: ", data)
+                # print("data: ", data)
                 self.process_message(data, client_socket)
                 client_socket.close()
         finally:
@@ -375,11 +378,11 @@ class tcp_Server:
     def process_message(self, data, client_socket):
         # Process the received message
 
-        print('received {} bytes from {}'.format(len(data), client_socket))
+        # print('received {} bytes from {}'.format(len(data), client_socket))
         # データをheaderとbodyに分割
         header = data[:32]
         body = data[32:]
-        print(f"header: {header}", f"body: {body}")
+        # print(f"header: {header}", f"body: {body}")
 
         # header解析
         room_name_size = int.from_bytes(header[0:1], byteorder='big')
@@ -391,11 +394,12 @@ class tcp_Server:
         room_name = body[:room_name_size]
         operation_payload = body[room_name_size:room_name_size+operation_payload_size]
 
-        print(f"room_name: {room_name}", f"operation_payload: {operation_payload}")
+        # print(f"room_name: {room_name}", f"operation_payload: {operation_payload}")
 
         # bodyのデコード
         room_name_decode = self.decoder(room_name, 'str')
         operation_payload_decode = self.decoder(operation_payload, 'str')
+        print('room_name: {}\noperation_payload: {}'.format(room_name_decode, operation_payload_decode))
 
         # bodyのデコード結果のバイト数をチェック
         if len(room_name_decode) > 2**8:
@@ -436,9 +440,9 @@ class tcp_Server:
         # Create the body
         body = operation_payload_tobyte
 
-        print(f"header: {header}", f"body: {body}")
+        # print(f"header: {header}", f"body: {body}")
         data_to_send = header + body
-        print(f"Sending data: {data_to_send}")
+        # print(f"Sending data: {data_to_send}")
 
         try:
             client_socket.sendall(data_to_send)
@@ -458,7 +462,7 @@ class tcp_Server:
         # self.chat_rooms[room_name_decode] = {'host' : set(), 'members': set()}
         # self.chat_rooms[room_name_decode]['host'].add((host_token, username))
         # self.chat_rooms[room_name_decode]['members'].add((host_token, client_address))
-        print(f"client_ip: {client_socket.getpeername()}")
+        # print(f"client_ip: {client_socket.getpeername()}")
 
         try:
             self.chat_room_list.create_chat_room(room_name_decode, username, host_token, client_socket.getpeername())
@@ -472,7 +476,7 @@ class tcp_Server:
 
         else:
             print('\n')
-            print(f"active_chatrooms: {self.chat_room_list.chat_room_list}")
+            # print(f"active_chatrooms: {self.chat_room_list.chat_room_list}")
             # host_tokenを含んだレスポンス返却処理(payloadに入れて送り返す等)
             #token_tobyte = self.encoder(host_token, 1)
             #room_name_tobyte = self.encoder(room_name, 1)
@@ -496,8 +500,8 @@ class tcp_Server:
 
     def handle_token_response(self, room_name, state, username, client_socket):
         # 新しいユーザーがチャットルームに参加したときに呼び出される関数
-        print('Handle token response.')
-
+        # print('Handle token response.')
+        print('join chatroom')
         # Process the token and perform necessary actions
 
         operation_payload = 200

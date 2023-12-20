@@ -23,10 +23,10 @@ class TCPClient:
 
     def start(self):
         print(
-            f'server address:{self.server_address}, server port:{self.server_port}')
+            f'server address: {self.server_address}\nserver port:{self.server_port}')
 
         client_address = socket.gethostbyname(socket.gethostname())
-        print(f"client_address: {client_address}")
+        print(f"\nclient_address: {client_address}")
 
         #self.socket.bind((client_address,0))
         client_port = self.socket.getsockname()[1]
@@ -101,41 +101,46 @@ class TCPClient:
         body = chatroom_name_to_byte + self.encoder(self.username, 1)
 
         #メッセージの送信
-        print('sending {!r}'.format(header+body))
+        #print('sending {!r}'.format(header+body))
         self.socket.sendall(header+body)
         print('Send {} bytes'.format(len(header+body)))
 
 
         # データ受信
-        print('waiting to receive data from server')
+        print('waiting to receive data from server\n')
         data = self.socket.recv(TCPClient.BUFFER_SIZE)
-        print('\n received username {!r}'.format(data))
+        #print('\n received username {!r}'.format(data))
         header = data[:32]
         body = data[32:]
 
         # header解析
+
+        print('received data from server')
+        print('---response info ---')
         room_name_size =  int.from_bytes(header[:1], byteorder='big')
-        print('\nroom_size: received {} bytes data: {}'.format(
-            len(header[:1]), room_name_size))
+        # print('\nroom_size: received {} bytes data: {}'.format(
+        #     len(header[:1]), room_name_size))
         operation = int.from_bytes(header[1:2],byteorder='big')
-        print('operation: received {} bytes data: {}'.format(
-            len(header[1:2]), operation))
+        # print('operation: received {} bytes data: {}'.format(
+        #     len(header[1:2]), operation))
         state = int.from_bytes(header[2:3], byteorder='big')
-        print('state: received {} bytes data: {}'.format(
-            len(header[2:3]), state))
+        # print('state: received {} bytes data: {}'.format(
+        #     len(header[2:3]), state))
 
         # body解析
         room_name = self.decoder(body[:room_name_size], 'str')
-        print('room_name: received {} bytes data: {}'.format(
-            len(body[:room_name_size]), room_name))
+        # print('room_name: received {} bytes data: {}'.format(
+        #     len(body[:room_name_size]), room_name))
+        print('room_name: {}'.format(room_name) )
 
         operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
-        print('payload_size: received {} bytes data: {}'.format(
-            len(header[3:32]), operation_payload_size))
+        # print('payload_size: received {} bytes data: {}'.format(
+        #     len(header[3:32]), operation_payload_size))
 
         operation_payload = int.from_bytes(body[room_name_size:room_name_size + operation_payload_size], byteorder='big')
-        print('user_name: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
-
+        # print('user_name: received {} bytes data: {}'.format(len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+        print('operation_payload: {}'.format(operation_payload) )
+        print('------\n')
         return
 
     def receive_message(self):
@@ -144,46 +149,54 @@ class TCPClient:
                 # 応答を受信
                 #data, _ = self.socket.recvfrom(UDPClient.BUFFER_SIZE)
                 data = self.socket.recv(TCPClient.BUFFER_SIZE)
-                print('\n received {!r}'.format(data))
+                # print('\n received {!r}'.format(data))
+                print('received data from server\n')
                 # データ解析
                 header = data[:32]
                 body = data[32:]
-
+                print(data)
                 # header解析
                 room_name_size =  int.from_bytes(header[:1], byteorder='big')
-                print('\nroom_size: received {} bytes data: {}'.format(
-                    len(header[:1]), room_name_size))
+                # print('\nroom_size: received {} bytes data: {}'.format(
+                #     len(header[:1]), room_name_size))
                 operation = int.from_bytes(header[1:2],byteorder='big')
-                print('operation: received {} bytes data: {}'.format(
-                    len(header[1:2]), operation))
+                # print('operation: received {} bytes data: {}'.format(
+                #     len(header[1:2]), operation))
                 state = int.from_bytes(header[2:3], byteorder='big')
-                print('state: received {} bytes data: {}'.format(
-                    len(header[2:3]), state))
+                # print('state: received {} bytes data: {}'.format(
+                #     len(header[2:3]), state))
 
                 operation_payload_size = int.from_bytes(header[3:32], byteorder='big')
-                print('payload_size: received {} bytes data: {}'.format(
-                    len(header[3:32]), operation_payload_size))
+                # print('payload_size: received {} bytes data: {}'.format(
+                #     len(header[3:32]), operation_payload_size))
 
                 # body解析
+                print('---response info ---')
                 room_name = self.decoder(body[:room_name_size], 'str')
-                print('room_name: received {} bytes data: {}'.format(
-                    len(body[:room_name_size]), room_name))
+                # print('room_name: received {} bytes data: {}'.format(
+                #     len(body[:room_name_size]), room_name))
+
+
+                print('room_name: {}'.format(room_name))
 
                 #operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size], 'str')
                 operation_payload = self.decoder(body[room_name_size:room_name_size + operation_payload_size],'dict')
-                print('user_name: received {} bytes data: {}'.format(
-                    len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+                # print('user_name: received {} bytes data: {}'.format(
+                #     len(body[room_name_size:room_name_size + operation_payload_size]), operation_payload))
+                print('operation_payload: {}'.format(operation_payload))
+                print('------\n')
+
                 client_address = socket.gethostbyname(socket.gethostname())
-                print(f"client_address: {client_address}")
+                # print(f"client_address: {client_address}")
 
                 #self.socket.bind((client_address,0))
                 client_port = self.socket.getsockname()[1]
-                print(f"client_port: {client_port}")
+                # print(f"client_port: {client_port}")
 
                 if state == 2 and operation_payload["status_code"] == 200:
                     self.user_token = operation_payload["user_token"]
-                    print(self.user_token)
-                    print('closing socket')
+                    # print(self.user_token)
+                    print('closing tcp socket')
                     self.socket.close()
                     udp_client = UDPClient(room_name=room_name, user_token=self.user_token,client_address=client_address, client_port=client_port)
                     udp_client.start()
@@ -198,7 +211,7 @@ class TCPClient:
                     break
 
         finally:
-            print('closing socket')
+            print('closing tcp socket')
             self.socket.close()
 
 
@@ -319,10 +332,10 @@ class UDPClient:
                 body += self.encoder(token, 1)
                 body += self.encoder(message_body, 1)
 
-                print('sending {!r}'.format(header + body))
+                # print('sending {!r}'.format(header + body))
 
                 # udpサーバへのデータ送信
-                print("udp_client_socket: ", self.socket)
+                # print("udp_client_socket: ", self.socket)
                 sent = self.socket.sendto(
                     header+body, (self.server_address, self.server_port))
                 print('Send {} bytes'.format(sent))
@@ -335,18 +348,19 @@ class UDPClient:
             while True:
                 # 応答を受信
                 data, _ = self.socket.recvfrom(UDPClient.BUFFER_SIZE)
-                print('\n received {!r}'.format(data))
+                # print('\n received {!r}'.format(data))
                  # データをheaderとbodyに分割
                 header = data[:2]
                 body = data[2:]
 
                 # header解析
+                print('\nreceived message')
                 room_name_size = int.from_bytes(header[0:1], byteorder='big')
                 token_size = int.from_bytes(header[1:2], byteorder='big')
-                print('\nroom_size: received {} bytes data: {}'.format(
-                     len(header[0:1]), room_name_size))
-                print('\ntoken_size: received {} bytes data: {}'.format(
-                     len(body[0:1]), token_size))
+                # # print('\nroom_size: received {} bytes data: {}'.format(
+                # #      len(header[0:1]), room_name_size))
+                # print('\ntoken_size: received {} bytes data: {}'.format(
+                #      len(body[0:1]), token_size))
 
                 # body解析
                 room_name = body[:room_name_size]
@@ -357,12 +371,17 @@ class UDPClient:
                 room_name_decode = self.decoder(room_name, 'str')
                 token_decode = self.decoder(token, 'str')
                 message_body_decode = self.decoder(message_body, 'str')
-                print('room_name: received {} bytes data: {}'.format(
-                     len(room_name), room_name_decode))
-                print('token: received {} bytes data: {}'.format(
-                     len(token), token_decode))
-                print('message_body: received {} bytes data: {}'.format(
-                     len(message_body), message_body_decode))
+                # print('room_name: received {} bytes data: {}'.format(
+                #      len(room_name), room_name_decode))
+                # print('token: received {} bytes data: {}'.format(
+                #      len(token), token_decode))
+                # print('message_body: received {} bytes data: {}'.format(
+                #      len(message_body), message_body_decode))
+                print('room_name: {}'.format(room_name_decode))
+                print('token: {}'.format(token_decode))
+                print('message: {}'.format(message_body_decode))
+
+                print("\n received message: {}".format(message_body_decode))
                 # # データ解析
                 # header = data[:32]
                 # body = data[32:]
