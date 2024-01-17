@@ -135,9 +135,10 @@ class UDPClient {
 
 ```
 
-## プログラムのデモ
-![image](https://github.com/teamdev-A-backend/online-chat-messenger/assets/112442087/3af7c1a5-7e47-4e11-bbe5-c3a5dfacb68b)
-![image](https://github.com/teamdev-A-backend/online-chat-messenger/assets/112442087/a0a843f8-6095-45ad-bbd7-225f6f4fda79)
+## デモ
+
+<img width="1200" alt="online_chat_messenger" src="https://github.com/Kanatanagano/computer-builder/assets/112442087/5f33dab4-94f3-4ee2-a3af-1c3853f8635a">
+
 
 ## TCP通信について
 -  TCP（Transmission Control Protocol）は、インターネットプロトコルスイートの一部であり、ネットワークを介してデータを送受信するためのプロトコルの一つです。TCPは、データの送受信を確実に行うための信頼性の高い接続を提供します。今回のchat room作成/接続は送受信の確実性の観点から採用しました。
